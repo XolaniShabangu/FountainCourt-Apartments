@@ -57,55 +57,55 @@ It handles everything from **tenant applications and digital lease signing** to 
 
 ### 🏠 Landing Page
 Shows available room types and pricing for potential tenants.  
-![Landing Page](docs/screenshots/01-landing.png)
+![Landing Page](docs/screenshots/01-landing.png.png)
 
 ---
 
 ### 📝 Application Page
 Tenant applies online, uploads ID and bank statement, and submits for approval.  
-![Application Page](docs/screenshots/02-apply.png)
+![Application Page](docs/screenshots/02-apply.png.png)
 
 ---
 
 ### 🖋️ Lease Signing Page
 After approval, tenant signs the digital lease before proceeding to payment.  
-![Lease Signing](docs/screenshots/03-lease-sign.png)
+![Lease Signing](docs/screenshots/03-lease-sign.png.png)
 
 ---
 
 ### 👤 Tenant Dashboard
 Shows tenant details, notices, payments, and quick access to maintenance requests.  
-![Tenant Dashboard](docs/screenshots/04-tenant-dashboard.png)
+![Tenant Dashboard](docs/screenshots/04-tenant-dashboard.png.png)
 
 ---
 
 ### 🧰 Tenant Maintenance View
 Tenants create and track maintenance requests, view job status and updates.  
-![Tenant Maintenance](docs/screenshots/05-tenant-maintenance.png)
+![Tenant Maintenance](docs/screenshots/05-tenant-maintenance.png.png)
 
 ---
 
 ### 📊 Landlord Dashboard
 Displays stats on occupancy, maintenance trends, and payment summaries.  
-![Landlord Dashboard](docs/screenshots/06-landlord-dashboard.png)
+![Landlord Dashboard](docs/screenshots/06-landlord-dashboard.png.png)
 
 ---
 
 ### 📄 Landlord Applications View
 Lists all tenant applications with status, ID previews, and approval/rejection options.  
-![Applications View](docs/screenshots/07-landlord-applications.png)
+![Applications View](docs/screenshots/07-landlord-applications.png.png)
 
 ---
 
 ### 👥 Manage Tenants View
 Landlord can view all current tenants, see payment history, and remove inactive ones.  
-![Manage Tenants](docs/screenshots/08-manage-tenants.png)
+![Manage Tenants](docs/screenshots/08-manage-tenants.png.png)
 
 ---
 
 ### 🔧 Landlord Maintenance View
 Displays all open repair requests, assigned repairmen, and completion statuses.  
-![Landlord Maintenance](docs/screenshots/09-landlord-maintenance.png)
+![Landlord Maintenance](docs/screenshots/09-landlord-maintenance.png.png)
 
 ---
 
