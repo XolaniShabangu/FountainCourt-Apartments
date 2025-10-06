@@ -105,7 +105,7 @@ Landlord can view all current tenants, see payment history, and remove inactive 
 
 ### 🔧 Landlord Maintenance View
 Displays all open repair requests, assigned repairmen, and completion statuses.  
-![Landlord Maintenance](docs/screenshots/09-landlord-maintenance.png.png)
+![Landlord Maintenance](docs/screenshots/09-landlord-maintenance.png)
 
 ---
 
