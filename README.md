@@ -39,7 +39,7 @@ It handles everything from **tenant applications and digital lease signing** to 
 - **Backend:** ASP.NET MVC 5 (C#)  
 - **Database:** SQL Server (Entity Framework DB-First)  
 - **Cloud Services:** Azure Computer Vision (OCR)  
-- **Payments:** Stripe (Test Mode)  
+- **Payments:** PayFast (Test Mode)  
 - **Email:** MailKit SMTP  
 
 ---
