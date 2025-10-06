@@ -1,0 +1,265 @@
+﻿@model FountainCourtResidents.Models.ViewModels.TenantMaintenanceVM
+@{
+    ViewBag.Title = "Maintenance";
+    var za = new System.Globalization.CultureInfo("en-ZA");
+}
+
+<h2 class="mb-3">Maintenance</h2>
+
+@if (TempData["ok"] != null)
+{
+    <div class="alert alert-success">@TempData["ok"]</div>
+}
+
+<div class="row">
+    <div class="col-lg-6 mb-3">
+        <div class="card shadow-sm">
+            <div class="card-body">
+                <h5 class="card-title">Report an issue</h5>
+                @using (Html.BeginForm("CreateMaintenance", "Tenant", FormMethod.Post))
+                {
+                    @Html.AntiForgeryToken()
+                    @Html.ValidationSummary(true, "", new { @class = "text-danger" })
+
+                    <div class="form-group">
+                        @Html.LabelFor(m => m.NewTicket.Title)
+                        @Html.TextBoxFor(m => m.NewTicket.Title, new { @class = "form-control", placeholder = "Short summary (e.g., Kitchen tap leaking)" })
+                        @Html.ValidationMessageFor(m => m.NewTicket.Title)
+                    </div>
+
+                    <div class="form-group">
+                        @Html.LabelFor(m => m.NewTicket.Description)
+                        @Html.TextAreaFor(m => m.NewTicket.Description, new { @class = "form-control", rows = 5, placeholder = "Describe the issue..." })
+                        @Html.ValidationMessageFor(m => m.NewTicket.Description)
+                    </div>
+
+                    <div class="form-group">
+                        @Html.Label("Priority")
+                        @Html.DropDownListFor(m => m.NewTicket.Priority,
+                            new SelectList(Enum.GetValues(typeof(FountainCourtResidents.Models.MaintenancePriority))),
+                            new { @class = "form-control" })
+                    </div>
+
+                    <button type="submit" class="btn btn-primary">Submit</button>
+                }
+            </div>
+        </div>
+    </div>
+
+    <div class="col-lg-6 mb-3">
+        <div class="card shadow-sm">
+            <div class="card-body">
+                <h5 class="card-title">Your requests</h5>
+
+                @if (Model.Items == null || Model.Items.Count == 0)
+                {
+                    <div class="text-muted">No requests yet.</div>
+                }
+                else
+                {
+                    <div class="table-responsive">
+                        <table class="table table-sm mb-0 align-middle">
+                            <thead>
+                                <tr>
+                                    <th>Title</th>
+                                    <th>Status</th>
+                                    <th>Priority</th>
+                                    <th>Created</th>
+                                    <th>Assigned</th>
+                                    <th style="width:160px">Rating</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @foreach (var t in Model.Items)
+                                {
+                                    <tr>
+                                        <td>@t.Title</td>
+
+                                        <td>
+                                            <span class="badge @(t.Status == FountainCourtResidents.Models.MaintenanceStatus.Open
+                            ? "bg-danger text-white"
+                            : t.Status == FountainCourtResidents.Models.MaintenanceStatus.InProgress
+                                ? "bg-warning text-dark"
+                                : "bg-success text-white")">
+                                                @t.Status
+                                            </span>
+                                        </td>
+
+                                        <td>@t.Priority</td>
+
+                                        <td>@t.CreatedUtc.ToLocalTime().ToString("yyyy-MM-dd HH:mm")</td>
+
+                                        <td>@(string.IsNullOrWhiteSpace(t.AssignedTo) ? "-" : t.AssignedTo)</td>
+
+                                        <td>
+                                            @* If job is closed and not yet rated: show compact select + submit *@
+                                            @if (t.Status == FountainCourtResidents.Models.MaintenanceStatus.Closed && t.Rating == null)
+                                            {
+                                                <form method="post" action="@Url.Action("RateMaintenance","Tenant")" class="d-inline">
+                                                    @Html.AntiForgeryToken()
+                                                    <input type="hidden" name="TicketId" value="@t.Id" />
+                                                    <select name="Rating" class="form-select form-select-sm d-inline w-auto me-1" required>
+                                                        <option value="">Rate…</option>
+                                                        <option value="1">★☆☆☆☆</option>
+                                                        <option value="2">★★☆☆☆</option>
+                                                        <option value="3">★★★☆☆</option>
+                                                        <option value="4">★★★★☆</option>
+                                                        <option value="5">★★★★★</option>
+                                                    </select>
+                                                    <button type="submit" class="btn btn-primary btn-sm">OK</button>
+                                                </form>
+                                            }
+                                            else if (t.Rating != null)
+                                            {
+                                                var r = Math.Max(0, Math.Min(5, t.Rating ?? 0));
+                                                var filled = new string('★', r);
+                                                var empty = new string('☆', 5 - r);
+                                                <span class="text-success small">@filled@empty</span>
+                                            }
+                                            else
+                                            {
+                                                <span class="text-muted">—</span>
+                                            }
+                                        </td>
+                                    </tr>
+                                }
+                            </tbody>
+                        </table>
+                    </div>
+
+                }
+
+            </div>
+        </div>
+    </div>
+</div>
+
+<link rel="stylesheet"
+      href="https://cdnjs.cloudflare.com/ajax/libs/open-iconic/1.1.1/font/css/open-iconic-bootstrap.min.css"
+      integrity="sha512-D9rl8j3Y0e+u1x5dB1G1aJJKSUEN2k3y7rj9g0B8JGi1hI1QG+E5VdM2Yb2gXG4oYxJQ0v8mW1Hjgx2CwO80rQ=="
+      crossorigin="anonymous" referrerpolicy="no-referrer" />
+
+<style>
+    .table .form-select.w-auto {
+        min-width: 96px;
+    }
+
+    /* =========================================
+   Tenant Maintenance – non-destructive polish
+   (scoped to the first .row after the H2)
+   ========================================= */
+
+/* Cards (both columns) */
+h2.mb-3 + .row .card{
+  border: 1px solid #eef2f7;
+  border-radius: 14px;
+}
+h2.mb-3 + .row .card.shadow-sm:hover{
+  box-shadow: 0 16px 36px rgba(31,42,55,.08);
+  transform: translateY(-1px);
+  transition: transform .12s ease, box-shadow .12s ease;
+}
+h2.mb-3 + .row .card-title{
+  font-weight: 700;
+  color: #1f2a37;
+}
+
+/* ===== Left card: Report an issue ===== */
+h2.mb-3 + .row > .col-lg-6:first-child .form-group{
+  margin-bottom: 14px;
+}
+h2.mb-3 + .row > .col-lg-6:first-child label{
+  font-weight: 600;
+  color: #1f2a37;
+  margin-bottom: 6px;
+}
+h2.mb-3 + .row > .col-lg-6:first-child .form-control{
+  border: 1px solid #e5e7eb;
+  border-radius: 10px;
+  padding: 10px 12px;
+  transition: box-shadow .15s ease, border-color .15s ease;
+}
+h2.mb-3 + .row > .col-lg-6:first-child .form-control:focus{
+  border-color: #0f81c7;
+  box-shadow: 0 0 0 3px rgba(15,129,199,.15);
+  outline: none;
+}
+/* Priority select */
+h2.mb-3 + .row > .col-lg-6:first-child select.form-control{
+  background-color: #fff;
+}
+
+/* Submit button */
+h2.mb-3 + .row > .col-lg-6:first-child .btn.btn-primary{
+  background: linear-gradient(180deg, #0f81c7 0%, #0a6fab 100%);
+  border: 1px solid #0a6fab;
+  border-radius: 10px;
+  font-weight: 700;
+  padding: 10px 16px;
+}
+
+/* Success alert */
+.alert.alert-success{
+  border-radius: 12px;
+}
+
+/* ===== Right card: Your requests ===== */
+h2.mb-3 + .row > .col-lg-6:last-child .table-responsive{
+  border-radius: 10px;
+  overflow: hidden;
+}
+h2.mb-3 + .row > .col-lg-6:last-child .table{
+  background: #fff;
+  border: 1px solid #eef2f7;
+}
+h2.mb-3 + .row > .col-lg-6:last-child .table thead th{
+  background: #f8fafc;
+  border-bottom: 1px solid #eef2f7;
+  color: #1f2a37;
+  font-weight: 700;
+  vertical-align: middle;
+}
+h2.mb-3 + .row > .col-lg-6:last-child .table td,
+h2.mb-3 + .row > .col-lg-6:last-child .table th{
+  vertical-align: middle;
+  font-variant-numeric: tabular-nums;
+}
+h2.mb-3 + .row > .col-lg-6:last-child .table tbody tr:hover{
+  background: #fafcff;
+}
+
+/* Status badges (keep your classes) */
+.badge.bg-danger.text-white   { background-color:#dc2626 !important; }
+.badge.bg-warning.text-dark   { background-color:#f59e0b !important; color:#111827 !important; }
+.badge.bg-success.text-white  { background-color:#16a34a !important; }
+
+/* Inline rating form in the table */
+h2.mb-3 + .row > .col-lg-6:last-child .form-select{
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  padding: 6px 8px;
+}
+h2.mb-3 + .row > .col-lg-6:last-child .form-select:focus{
+  border-color:#0f81c7;
+  box-shadow: 0 0 0 3px rgba(15,129,199,.15);
+  outline: none;
+}
+h2.mb-3 + .row > .col-lg-6:last-child .btn.btn-primary.btn-sm{
+  background: linear-gradient(180deg, #0f81c7 0%, #0a6fab 100%);
+  border: 1px solid #0a6fab;
+  border-radius: 8px;
+  font-weight: 700;
+  padding: 6px 10px;
+}
+
+/* Star colors for existing ratings */
+h2.mb-3 + .row > .col-lg-6:last-child .text-success{
+  color:#16a34a !important;
+}
+
+/* Small-screen niceties */
+@@media (max-width: 576px){
+  h2.mb-3 + .row .card-body { padding: 14px; }
+  h2.mb-3 + .row > .col-lg-6:last-child .table thead th{ font-size: .92rem; }
+}
+</style>

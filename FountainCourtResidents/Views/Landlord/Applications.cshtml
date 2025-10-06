@@ -1,0 +1,677 @@
+﻿@model FountainCourtResidents.Models.ViewModels.LandlordApplicationsVM
+@{
+    ViewBag.Title = "Applications";
+    Layout = "~/Views/Shared/_Layout.cshtml";
+    var za = new System.Globalization.CultureInfo("en-ZA");
+
+    var active = Model.Items.Where(x => (x.Status ?? "").Equals("New", StringComparison.OrdinalIgnoreCase)).ToList();
+    var pastTenants = Model.Items.Where(x => (x.Status ?? "").Equals("Disabled", StringComparison.OrdinalIgnoreCase)).ToList();
+    var decided = Model.Items.Where(x => !((x.Status ?? "").Equals("New", StringComparison.OrdinalIgnoreCase))
+                                      && !((x.Status ?? "").Equals("Disabled", StringComparison.OrdinalIgnoreCase))).ToList();
+
+}
+
+<h2 class="mb-3">Applications</h2>
+
+<!-- Sort toolbar -->
+<div class="d-flex align-items-center mb-3">
+    <form method="get" class="form-inline">
+        <label class="mr-2" for="sort">Sort by:</label>
+        <select id="sort" name="sort" class="form-control mr-2" onchange="this.form.submit()">
+            <option value="accepted" @(Model.Sort?.ToLower() == "accepted" ? "selected" : "")>
+                Accepted Only
+            </option>
+            <option value="rejected" @(Model.Sort?.ToLower() == "rejected" ? "selected" : "")>
+                Rejected Only
+            </option>
+            <option value="disabled" @(Model.Sort?.ToLower() == "disabled" ? "selected" : "")>
+                Past Tenants Only
+            </option>
+            <option value="newest" @(Model.Sort?.ToLower() == "newest" ? "selected" : "")>Newest</option>
+            <option value="oldest" @(Model.Sort?.ToLower() == "oldest" ? "selected" : "")>Oldest</option>
+            <option value="name" @(Model.Sort?.ToLower() == "name" ? "selected" : "")>Name (A–Z)</option>
+            @*<option value="status" @(Model.Sort?.ToLower() == "status" ? "selected" : "")>Status</option>*@
+        </select>
+        <noscript><button class="btn btn-sm btn-secondary">Apply</button></noscript>
+    </form>
+</div>
+
+@if (!Model.Items.Any())
+{
+    <div class="alert alert-info">No applications yet.</div>
+}
+else
+{
+    @Html.AntiForgeryToken()
+
+    <!-- Active (New) -->
+    <h5 class="mb-2">Active applications</h5>
+    <div id="activeList" class="card-list mb-4">
+        @if (!active.Any())
+        {
+            <div class="text-muted mb-3">No active applications.</div>
+        }
+        else
+        {
+            foreach (var a in active)
+            {
+                <div class="card shadow-sm mb-3 app-card" data-app-id="@a.Id" data-status="@a.Status">
+                    <div class="card-body position-relative">
+                        <!-- Status badge -->
+                        <div class="d-flex justify-content-between align-items-start">
+                            <div>
+                                <div class="h5 mb-1">@a.ApplicantName</div>
+                                <div class="text-muted" style="font-size:.9rem;">
+                                    Applied @a.CreatedUtc.ToLocalTime().ToString("yyyy-MM-dd HH:mm")
+                                </div>
+                            </div>
+                            <span class="badge badge-info status-badge">New</span>
+                        </div>
+
+                        <hr />
+
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div><strong>ID:</strong> @a.NationalId</div>
+                                @if (!string.IsNullOrWhiteSpace(a.Email))
+                                {<div><strong>Email:</strong> @a.Email</div>}
+                                @if (!string.IsNullOrWhiteSpace(a.Phone))
+                                {<div><strong>Phone:</strong> @a.Phone</div>}
+                            </div>
+                            <div class="col-md-6">
+                                <strong>Room Type:</strong>
+                                @if (!string.IsNullOrWhiteSpace(a.RoomTypeName))
+                                {
+                                    <span>@a.RoomTypeName</span>
+                                    if (a.PricePerMonth.HasValue)
+                                    { <span> — R @a.PricePerMonth.Value.ToString("N0", za)</span>;
+                                }
+                                if (a.SquareMeters.HasValue)
+                                { <span> — @a.SquareMeters.Value m²</span>;
+                            }
+                        }
+                        else
+                        { <span class="text-muted">Not set</span>}
+                            </div>
+                        </div>
+
+                        <div class="mt-3 d-flex align-items-center">
+                            <button type="button" class="btn btn-sm btn-outline-primary mr-2"
+                                    data-doc-url="@a.IdSasUrl" data-doc-title="ID Document"
+                                    onclick="openDocModal(this)" @(string.IsNullOrEmpty(a.IdSasUrl) ? "disabled" : null)>
+                                <span class="oi oi-image" aria-hidden="true"></span> View ID
+                            </button>
+                            <button type="button" class="btn btn-sm btn-outline-secondary"
+                                    data-doc-url="@a.BankSasUrl" data-doc-title="Bank Statement"
+                                    onclick="openDocModal(this)" @(string.IsNullOrEmpty(a.BankSasUrl) ? "disabled" : null)>
+                                <span class="oi oi-document" aria-hidden="true"></span> View Bank
+                            </button>
+                        </div>
+
+                        <div class="mt-3 pt-3 border-top d-flex justify-content-end">
+                            <div class="btn-group" role="group" aria-label="Approve or Reject">
+                                <button type="button" class="btn btn-success"
+                                        data-app-id="@a.Id"
+                                        onclick="approveApp(this)">
+                                    Approve
+                                </button>
+                                <button type="button" class="btn btn-danger"
+                                        data-app-id="@a.Id"
+                                        onclick="rejectApp(this)">
+                                    Reject
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            }
+        }
+    </div>
+
+    if (active.Any() && decided.Any())
+    {
+        <hr class="my-4" />
+    }
+
+    <!-- Decisions -->
+    <h5 class="mb-2">Decisions</h5>
+    <div id="decidedList" class="card-list">
+        @if (!decided.Any())
+        {
+            <div class="text-muted">No approved or declined applications yet.</div>
+        }
+        else
+        {
+            foreach (var a in decided)
+            {
+                var isApproved = (a.Status ?? "").Equals("Approved", StringComparison.OrdinalIgnoreCase);
+                var isRejected = (a.Status ?? "").Equals("Rejected", StringComparison.OrdinalIgnoreCase);
+                <div class="card shadow-sm mb-3 app-card has-decision @(isApproved ? "status-approved" : isRejected ? "status-rejected" : "")"
+                     data-app-id="@a.Id" data-status="@a.Status">
+                    <div class="card-body position-relative">
+                        <!-- Banner -->
+                        <div class="decision-banner @(isApproved ? "approved" : "rejected")">
+                            @(isApproved ? "APPROVED ✅" : "DECLINED ❌")
+                        </div>
+
+                        <!-- Status badge -->
+                        <div class="d-flex justify-content-between align-items-start">
+                            <div>
+                                <div class="h5 mb-1">@a.ApplicantName</div>
+                                <div class="text-muted" style="font-size:.9rem;">
+                                    Applied @a.CreatedUtc.ToLocalTime().ToString("yyyy-MM-dd HH:mm")
+                                </div>
+                            </div>
+                            <span class="badge @(isApproved ? "badge-success" : isRejected ? "badge-danger" : "badge-secondary") status-badge">
+                                @a.Status
+                            </span>
+                        </div>
+
+                        <hr />
+
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div><strong>ID:</strong> @a.NationalId</div>
+                                @if (!string.IsNullOrWhiteSpace(a.Email))
+                                {<div><strong>Email:</strong> @a.Email</div>}
+                                @if (!string.IsNullOrWhiteSpace(a.Phone))
+                                {<div><strong>Phone:</strong> @a.Phone</div>}
+                            </div>
+                            <div class="col-md-6">
+                                <strong>Room Type:</strong>
+                                @if (!string.IsNullOrWhiteSpace(a.RoomTypeName))
+                                {
+                                    <span>@a.RoomTypeName</span>
+                                    if (a.PricePerMonth.HasValue)
+                                    { <span> — R @a.PricePerMonth.Value.ToString("N0", za)</span>;
+                                }
+                                if (a.SquareMeters.HasValue)
+                                { <span> — @a.SquareMeters.Value m²</span>;
+                            }
+                        }
+                        else
+                        { <span class="text-muted">Not set</span>}
+                            </div>
+                        </div>
+
+                        <div class="mt-3 d-flex align-items-center">
+                            <button type="button" class="btn btn-sm btn-outline-primary mr-2"
+                                    data-doc-url="@a.IdSasUrl" data-doc-title="ID Document"
+                                    onclick="openDocModal(this)" @(string.IsNullOrEmpty(a.IdSasUrl) ? "disabled" : null)>
+                                <span class="oi oi-image" aria-hidden="true"></span> View ID
+                            </button>
+                            <button type="button" class="btn btn-sm btn-outline-secondary"
+                                    data-doc-url="@a.BankSasUrl" data-doc-title="Bank Statement"
+                                    onclick="openDocModal(this)" @(string.IsNullOrEmpty(a.BankSasUrl) ? "disabled" : null)>
+                                <span class="oi oi-document" aria-hidden="true"></span> View Bank
+                            </button>
+                        </div>
+
+                        <!-- Buttons disabled for decided cards -->
+                        <div class="mt-3 pt-3 border-top d-flex justify-content-end">
+                            <div class="btn-group" role="group" aria-label="Approve or Reject">
+                                <button type="button" class="btn btn-success" disabled>Approve</button>
+                                <button type="button" class="btn btn-danger" disabled>Reject</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            }
+        }
+    </div>
+
+    <h5 class="mb-2">Past Tenants</h5>
+    <div id="pastList" class="card-list">
+        @if (!pastTenants.Any())
+        {
+            <div class="text-muted">No past tenants yet.</div>
+        }
+        else
+        {
+            foreach (var a in pastTenants)
+            {
+                <div class="card shadow-sm mb-3 app-card status-disabled"
+                     data-app-id="@a.Id" data-status="@a.Status">
+                    <div class="card-body position-relative">
+                        <!-- Banner -->
+                        <div class="decision-banner disabled">
+                            PAST TENANT 🏠
+                        </div>
+
+                        <!-- Status badge -->
+                        <div class="d-flex justify-content-between align-items-start">
+                            <div>
+                                <div class="h5 mb-1">@a.ApplicantName</div>
+                                <div class="text-muted" style="font-size:.9rem;">
+                                    Applied @a.CreatedUtc.ToLocalTime().ToString("yyyy-MM-dd HH:mm")
+                                </div>
+                            </div>
+                            <span class="badge badge-secondary status-badge">
+                                Disabled
+                            </span>
+                        </div>
+
+                        <hr />
+
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div><strong>ID:</strong> @a.NationalId</div>
+                                @if (!string.IsNullOrWhiteSpace(a.Email))
+                                {<div><strong>Email:</strong> @a.Email</div>}
+                                @if (!string.IsNullOrWhiteSpace(a.Phone))
+                                {<div><strong>Phone:</strong> @a.Phone</div>}
+                            </div>
+                            <div class="col-md-6">
+                                <strong>Room Type:</strong>
+                                @if (!string.IsNullOrWhiteSpace(a.RoomTypeName))
+                                {
+                                    <span>@a.RoomTypeName</span>
+                                    if (a.PricePerMonth.HasValue)
+                                    { <span> — R @a.PricePerMonth.Value.ToString("N0", za)</span>;
+                                }
+                                if (a.SquareMeters.HasValue)
+                                { <span> — @a.SquareMeters.Value m²</span>;
+                            }
+                        }
+                        else
+                        { <span class="text-muted">Not set</span>}
+                            </div>
+                        </div>
+
+                        <!-- Past tenants = no action buttons -->
+                        <div class="mt-3 pt-3 border-top d-flex justify-content-end">
+                            <span class="text-muted">Tenant removed from system</span>
+                        </div>
+                    </div>
+                </div>
+            }
+        }
+    </div>
+
+}
+
+<!-- Modal (unchanged) -->
+<div class="modal fade" id="docModal" tabindex="-1" role="dialog" aria-labelledby="docModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-xl" role="document" style="max-width:95%;">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="docModalLabel">Document</h5>
+                <button type="button" class="close" data-dismiss="modal" data-bs-dismiss="modal" aria-label="Close">
+                    <span aria-hidden="true">&times;</span>
+                </button>
+            </div>
+            <div class="modal-body p-0" style="height:80vh;">
+                <img id="docImg" alt="" style="display:none; width:100%; height:100%; object-fit:contain;" />
+                <iframe id="docPdf" src="about:blank" style="display:none; border:0; width:100%; height:100%;" allowfullscreen></iframe>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section scripts {
+    <script>
+        // View helpers (unchanged)
+        function pickViewer(url){
+            if(!url) return 'pdf';
+            var u = url.split('?')[0].toLowerCase();
+            if (u.endsWith('.png') || u.endsWith('.jpg') || u.endsWith('.jpeg') || u.endsWith('.gif') || u.endsWith('.bmp') || u.endsWith('.webp') || u.endsWith('.tif') || u.endsWith('.tiff')) {
+                return 'image';
+            }
+            return 'pdf';
+        }
+        function setModalContent(url, title){
+            var img = document.getElementById('docImg');
+            var pdf = document.getElementById('docPdf');
+            document.getElementById('docModalLabel').textContent = title || 'Document';
+            if (pickViewer(url) === 'image') {
+                pdf.style.display = 'none';
+                pdf.src = 'about:blank';
+                img.style.display = 'block';
+                img.src = url;
+            } else {
+                img.style.display = 'none';
+                img.removeAttribute('src');
+                pdf.style.display = 'block';
+                pdf.src = url;
+            }
+        }
+        function showModal(){
+            var el = document.getElementById('docModal');
+            if (window.bootstrap && typeof bootstrap.Modal === 'function') {
+                var m = bootstrap.Modal.getOrCreateInstance(el);
+                m.show();
+            } else if (window.jQuery && $('#docModal').modal) {
+                $('#docModal').modal('show');
+            } else {
+                el.classList.add('show'); el.style.display = 'block';
+            }
+        }
+        function hideModal(){
+            var el = document.getElementById('docModal');
+            if (window.bootstrap && typeof bootstrap.Modal === 'function') {
+                var m = bootstrap.Modal.getOrCreateInstance(el);
+                m.hide();
+            } else if (window.jQuery && $('#docModal').modal) {
+                $('#docModal').modal('hide');
+            } else {
+                el.classList.remove('show'); el.style.display = 'none';
+            }
+        }
+        (function(){
+            var closeBtn = document.querySelector('#docModal .close');
+            if (closeBtn) closeBtn.addEventListener('click', hideModal);
+            if (window.jQuery) {
+                $('#docModal').on('hidden.bs.modal', function(){
+                    document.getElementById('docImg').removeAttribute('src');
+                    document.getElementById('docPdf').src = 'about:blank';
+                });
+            } else {
+                var el = document.getElementById('docModal');
+                el.addEventListener('hidden.bs.modal', function(){
+                    document.getElementById('docImg').removeAttribute('src');
+                    document.getElementById('docPdf').src = 'about:blank';
+                });
+                el.addEventListener('hide.bs.modal', function(){
+                    document.getElementById('docImg').removeAttribute('src');
+                    document.getElementById('docPdf').src = 'about:blank';
+                });
+            }
+        })();
+        function openDocModal(btn){
+            var url = btn.getAttribute('data-doc-url');
+            var title = btn.getAttribute('data-doc-title') || 'Document';
+            if(!url){ return; }
+            setModalContent(url, title);
+            showModal();
+        }
+        window.openDocModal = openDocModal;
+
+        // === Approve/Reject JS (updated) ===
+        function getCsrfToken(){
+            var f = document.querySelector('input[name="__RequestVerificationToken"]');
+            return f ? f.value : '';
+        }
+
+        function setStatusOnCard(btn, newStatus){
+            var card = btn.closest('.app-card');
+            if(!card) return;
+
+            // Update data-status
+            card.setAttribute('data-status', newStatus);
+
+            // Update badge
+            var badge = card.querySelector('.status-badge');
+            if (badge){
+                badge.textContent = newStatus;
+                badge.className = 'badge status-badge ' + (
+                    newStatus === 'Approved' ? 'badge-success' :
+                    newStatus === 'Rejected' ? 'badge-danger' :
+                    newStatus === 'New' ? 'badge-info' : 'badge-secondary'
+                );
+            }
+
+            // Disable buttons
+            var group = card.querySelector('.btn-group');
+            if (group){
+                Array.prototype.forEach.call(group.querySelectorAll('button'), function(b){ b.disabled = true; });
+            }
+
+            // Add banner + classes
+            if (newStatus !== 'New'){
+                var banner = card.querySelector('.decision-banner');
+                if (!banner){
+                    banner = document.createElement('div');
+                    banner.className = 'decision-banner ' + (newStatus === 'Approved' ? 'approved' : 'rejected');
+                    banner.textContent = (newStatus === 'Approved' ? 'APPROVED ✅' : 'DECLINED ❌');
+                    var body = card.querySelector('.card-body');
+                    if (body) body.insertBefore(banner, body.firstChild);
+                } else {
+                    banner.className = 'decision-banner ' + (newStatus === 'Approved' ? 'approved' : 'rejected');
+                    banner.textContent = (newStatus === 'Approved' ? 'APPROVED ✅' : 'DECLINED ❌');
+                }
+
+                card.classList.add('has-decision');
+
+                card.classList.remove('status-approved','status-rejected');
+                if (newStatus === 'Approved') card.classList.add('status-approved');
+                if (newStatus === 'Rejected') card.classList.add('status-rejected');
+
+                // Move card to Decisions list if it was in Active
+                var decidedList = document.getElementById('decidedList');
+                if (decidedList && card.parentNode !== decidedList){
+                    decidedList.insertBefore(card, decidedList.firstChild);
+                }
+            }
+        }
+
+        async function approveApp(btn){
+            var id = btn.getAttribute('data-app-id');
+            if(!id) return;
+            btn.disabled = true;
+            try {
+                var res = await fetch('@Url.Action("Approve","Landlord")', {
+                    method: 'POST',
+                    credentials: 'same-origin',
+                    headers: { 'Content-Type':'application/x-www-form-urlencoded; charset=UTF-8' },
+                    body: '__RequestVerificationToken=' + encodeURIComponent(getCsrfToken()) + '&id=' + encodeURIComponent(id)
+                });
+                var j = await res.json();
+                if(!j.ok){ alert(j.message || 'Failed to approve.'); return; }
+                setStatusOnCard(btn, j.status || 'Approved');
+                alert(j.message || 'Approved.');
+            } catch(e){
+                alert('Error: ' + e.message);
+            } finally {
+                btn.disabled = false;
+            }
+        }
+
+        async function rejectApp(btn){
+            var id = btn.getAttribute('data-app-id');
+            if(!id) return;
+            if(!confirm('Are you sure you want to reject this application?')) return;
+            btn.disabled = true;
+            try {
+                var res = await fetch('@Url.Action("Reject","Landlord")', {
+                    method: 'POST',
+                    credentials: 'same-origin',
+                    headers: { 'Content-Type':'application/x-www-form-urlencoded; charset=UTF-8' },
+                    body: '__RequestVerificationToken=' + encodeURIComponent(getCsrfToken()) + '&id=' + encodeURIComponent(id)
+                });
+                var j = await res.json();
+                if(!j.ok){ alert(j.message || 'Failed to reject.'); return; }
+                setStatusOnCard(btn, j.status || 'Rejected');
+                alert(j.message || 'Rejected.');
+            } catch(e){
+                alert('Error: ' + e.message);
+            } finally {
+                btn.disabled = false;
+            }
+        }
+        window.approveApp = approveApp;
+        window.rejectApp = rejectApp;
+    </script>
+
+    <!-- Open Iconic (optional) -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/open-iconic/1.1.1/font/css/open-iconic-bootstrap.min.css" integrity="sha512-D9rl8j3Y0e+u1x5dB1G1aJJKSUEN2k3y7rj9g0B8JGi1hI1QG+E5VdM2Yb2gXG4oYxJQ0v8mW1Hjgx2CwO80rQ==" crossorigin="anonymous" referrerpolicy="no-referrer" />
+}
+
+
+<style>
+    .badge {
+        padding: .35em .6em;
+    }
+
+    .card-list .card {
+        border-radius: .75rem;
+    }
+
+    /* Decision banner */
+    .decision-banner {
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        text-align: center;
+        font-weight: 600;
+        padding: .45rem .5rem; /* a hair taller */
+        color: #fff;
+        border-top-left-radius: .75rem;
+        border-top-right-radius: .75rem;
+        z-index: 1;
+    }
+
+        .decision-banner.approved {
+            background: #28a745;
+        }
+        /* green */
+        .decision-banner.rejected {
+            background: #dc3545;
+        }
+    /* red */
+
+    /* Optional highlighting on decided cards */
+    .app-card.status-approved {
+        box-shadow: 0 0 0 2px rgba(40,167,69,.25);
+    }
+
+    .app-card.status-rejected {
+        box-shadow: 0 0 0 2px rgba(220,53,69,.25);
+    }
+
+    .app-card.has-decision .card-body {
+        padding-top: 2.8rem; /* adjust to match banner height */
+    }
+    .decision-banner.disabled {
+        background: #6c757d; /* gray */
+    }
+
+    .app-card.status-disabled {
+        box-shadow: 0 0 0 2px rgba(108,117,125,.25);
+    }
+
+
+/*    new style*/
+    <style>
+/* =========================================
+   Applications – non-destructive visual polish
+   (scoped to IDs/classes used in this view)
+   ========================================= */
+
+/* Toolbar */
+.form-inline label[for="sort"]{
+  font-weight: 600;
+  color:#1f2a37;
+}
+.form-inline #sort{
+  border:1px solid #e5e7eb;
+  border-radius:10px;
+  padding:8px 10px;
+  transition: box-shadow .15s ease, border-color .15s ease;
+}
+.form-inline #sort:focus{
+  border-color:#0f81c7;
+  box-shadow:0 0 0 3px rgba(15,129,199,.15);
+  outline:none;
+}
+
+/* Lists */
+.card-list .app-card{
+  border:1px solid #eef2f7;
+  border-radius:14px;
+  overflow:hidden;
+  transition: transform .12s ease, box-shadow .12s ease, border-color .12s ease;
+}
+.card-list .app-card:hover{
+  transform: translateY(-1px);
+  box-shadow: 0 16px 36px rgba(31,42,55,.08);
+}
+
+/* Status badge chips (don’t affect global .badge) */
+.app-card .status-badge{
+  border-radius:999px;
+  font-weight:700;
+  padding:.35em .6em;
+}
+.app-card .badge-info{    background-color:#0ea5e9; color:#fff; }
+.app-card .badge-success{ background-color:#16a34a; color:#fff; }
+.app-card .badge-danger{  background-color:#dc2626; color:#fff; }
+.app-card .badge-secondary{ background-color:#94a3b8; color:#fff; }
+
+/* Section titles */
+h5.mb-2{ font-weight:700; color:#1f2a37; }
+
+/* Info rows & labels */
+.app-card .h5{ font-weight:700; color:#111827; }
+.app-card strong{ color:#1f2a37; }
+
+/* Action buttons inside cards only */
+.app-card .btn.btn-success{
+  background: linear-gradient(180deg,#16a34a 0%, #12803b 100%);
+  border:1px solid #12803b; border-radius:10px; font-weight:700; padding:8px 14px;
+}
+.app-card .btn.btn-danger{
+  background: linear-gradient(180deg,#dc2626 0%, #b91c1c 100%);
+  border:1px solid #b91c1c; border-radius:10px; font-weight:700; padding:8px 14px;
+}
+.app-card .btn-group .btn:disabled{
+  filter: grayscale(.15) opacity(.9);
+}
+
+/* Document buttons */
+.app-card .btn.btn-sm.btn-outline-primary,
+.app-card .btn.btn-sm.btn-outline-secondary{
+  border-radius:10px; font-weight:700;
+}
+.app-card .btn.btn-sm.btn-outline-primary{ color:#0f81c7; border-color:#0f81c7; }
+.app-card .btn.btn-sm.btn-outline-primary:disabled{ color:#93c5fd; border-color:#93c5fd; }
+.app-card .btn.btn-sm.btn-outline-secondary{ color:#0a6fab; border-color:#0a6fab; }
+.app-card .btn.btn-sm.btn-outline-secondary:disabled{ color:#9ca3af; border-color:#9ca3af; }
+
+/* Divider rhythm */
+.app-card hr{ border-color:#eef2f7; margin:.75rem 0; }
+
+/* Decision banner (more depth, keeps your classes) */
+.app-card .decision-banner{
+  position:absolute; top:0; left:0; right:0; z-index:2;
+  text-align:center; font-weight:800; letter-spacing:.4px;
+  padding:.5rem .75rem; color:#fff;
+  border-top-left-radius:14px; border-top-right-radius:14px;
+  box-shadow:inset 0 -1px 0 rgba(255,255,255,.25);
+}
+.app-card .decision-banner.approved{ background: linear-gradient(180deg,#16a34a,#12803b); }
+.app-card .decision-banner.rejected{ background: linear-gradient(180deg,#dc2626,#b91c1c); }
+.app-card .decision-banner.disabled{ background: linear-gradient(180deg,#94a3b8,#6b7280); }
+
+/* Provide room for the banner */
+.app-card.has-decision .card-body{ padding-top: 3rem; }
+
+/* Subtle status ring on decided cards (keep your classes) */
+.app-card.status-approved{ box-shadow:0 0 0 2px rgba(22,163,74,.25); }
+.app-card.status-rejected{ box-shadow:0 0 0 2px rgba(220,38,38,.25); }
+.app-card.status-disabled{ box-shadow:0 0 0 2px rgba(148,163,184,.25); }
+
+/* Modal cosmetics (no behavior changes) */
+#docModal .modal-content{
+  border-radius:14px; border:1px solid #eef2f7;
+}
+#docModal .modal-header{
+  border-bottom:1px solid #eef2f7;
+}
+#docModal .modal-title{
+  font-weight:700; color:#1f2a37;
+}
+#docModal .modal-body{
+  background:#0b1220; /* dark background for PDFs/images */
+}
+
+/* Responsive tweaks */
+@@media (max-width: 576px){
+  .form-inline #sort{ width: 100%; margin-top:.35rem; }
+  .app-card .row > [class^="col-"]{ margin-top:.35rem; }
+  .app-card .btn-group .btn{ padding:8px 10px; }
+}
+</style>
+
+</style>
+

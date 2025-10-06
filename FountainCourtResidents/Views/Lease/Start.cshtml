@@ -1,0 +1,213 @@
+﻿@model FountainCourtResidents.Models.ViewModels.LeaseStartVM
+@{
+    ViewBag.Title = "Lease Agreement";
+    Layout = "~/Views/Shared/_Layout.cshtml";
+    var za = new System.Globalization.CultureInfo("en-ZA");
+}
+
+<link href="https://fonts.googleapis.com/css2?family=Special+Elite&display=swap" rel="stylesheet">
+
+<div class="container my-4">
+    <div class="paper mx-auto shadow">
+        <div class="paper-inner">
+
+            <div class="text-center mb-4">
+                <h2 class="doc-title">Fountain Court Residential Lease Agreement</h2>
+                <div class="doc-subtitle">Between Landlord and Tenant</div>
+            </div>
+
+            <div class="mb-3">
+                <div><strong>Tenant:</strong> @Model.ApplicantName (@Model.NationalId)</div>
+                <div><strong>Premises:</strong> @Model.PropertyAddress</div>
+                <div>
+                    <strong>Unit Type:</strong> @Model.RoomTypeName
+                    @if (Model.SquareMeters.HasValue)
+                    {
+                        <span> — @Model.SquareMeters m&sup2;</span>
+                    }
+                </div>
+                <div>
+                    <strong>Monthly Rent:</strong>
+                    @(Model.PricePerMonth.HasValue ? ("R " + Model.PricePerMonth.Value.ToString("N0", za)) : "TBD")
+                </div>
+                <div><strong>Lease Start Date:</strong> @Model.LeaseStartDate.ToString("yyyy-MM-dd")</div>
+                <div><strong>Lease Term:</strong> @Model.LeaseTermMonths months (fixed term)</div>
+            </div>
+
+            <hr />
+
+            <h5 class="section">Key Clauses</h5>
+            <ol class="clauses">
+                <li><strong>Rent & Payment:</strong> Rent is due on or before the 1st of each month. Late payments may incur a reasonable late fee after a grace period of 5 days.</li>
+                <li><strong>Deposit:</strong> A refundable security deposit equal to one month’s rent is payable prior to occupation, held in accordance with applicable South African law.</li>
+                <li><strong>Utilities:</strong> Unless specified otherwise, electricity and water are billed separately to the Tenant.</li>
+                <li><strong>Occupancy:</strong> Premises are for residential use only. Maximum occupancy per unit type applies.</li>
+                <li><strong>Visitors:</strong> Short-term visitors (≤ 7 consecutive days) are permitted, provided they do not cause nuisance or overcrowding. Overnight guests beyond 7 days require written permission.</li>
+                <li><strong>Maintenance & Repairs:</strong> Tenant shall report defects promptly. Landlord is responsible for structural and major systems; Tenant is responsible for minor wear resulting from misuse or negligence.</li>
+                <li><strong>Alterations:</strong> No structural changes without written consent. Cosmetic changes (e.g., picture hooks) allowed if restored at end of lease.</li>
+                <li><strong>Noise & Conduct:</strong> Quiet hours 22:00–06:00. No illegal activity. Considerate conduct expected in common areas.</li>
+                <li><strong>Pets:</strong> Pets only with prior written approval and adherence to building rules (pet deposit may apply).</li>
+                <li><strong>Subletting:</strong> Subletting or assignment requires Landlord’s prior written consent.</li>
+                <li><strong>Right of Entry:</strong> Landlord may enter on reasonable notice for inspections, repairs, or in emergencies.</li>
+                <li><strong>Insurance:</strong> Tenant is advised to carry contents insurance. Landlord’s insurance covers building structure only.</li>
+                <li><strong>Termination:</strong> Early termination governed by the Consumer Protection Act (if applicable) and lease terms, including reasonable cancellation penalties.</li>
+                <li><strong>Breach:</strong> Material breach may result in notice to remedy, and if unremedied, cancellation and eviction per law.</li>
+                <li><strong>Rules:</strong> Tenant agrees to abide by all building rules as amended from time to time and communicated in writing.</li>
+                <li><strong>Dispute Resolution:</strong> Parties will first attempt to resolve disputes amicably; failing which, legal remedies remain available.</li>
+            </ol>
+
+            <hr />
+
+            <h5 class="section">Signature</h5>
+            <p class="mb-2">
+                By signing below, you confirm you have read and agree to the terms of this lease agreement.
+            </p>
+
+            <div class="sig-wrap">
+                <canvas id="sigPad" class="sig-canvas"></canvas>
+                <div class="sig-footer">
+                    <button type="button" class="btn btn-sm btn-outline-secondary" id="clearSig">Clear</button>
+                    <span class="ml-2 text-muted">Use your mouse or finger to sign</span>
+                </div>
+            </div>
+
+            @using (Html.BeginForm("Accept", "Lease", FormMethod.Post, new { @class = "mt-3 d-flex align-items-center" }))
+            {
+                @Html.AntiForgeryToken()
+                @Html.Hidden("applicationId", Model.ApplicationId)
+                @Html.Hidden("token", Model.Token)
+                @Html.Hidden("signed", "false", new { id = "signedField" })
+
+                <button type="submit" id="proceedBtn" class="btn btn-success mr-2" disabled>Proceed to Pay</button>
+                @Html.ActionLink("Cancel", "Cancel", "Lease",
+                    new { applicationId = Model.ApplicationId, token = Model.Token },
+                    new { @class = "btn btn-link", onclick = "return cancelLease(event);" })
+            }
+
+            <div id="signHint" class="text-danger mt-2" style="display:none;">Please sign before proceeding.</div>
+        </div>
+    </div>
+</div>
+
+@section scripts{
+    <script src="https://cdn.jsdelivr.net/npm/signature_pad@4.1.5/dist/signature_pad.umd.min.js"></script>
+    <script>
+        (function(){
+            var canvas = document.getElementById('sigPad');
+            var clearBtn = document.getElementById('clearSig');
+            var proceedBtn = document.getElementById('proceedBtn');
+            var signedField = document.getElementById('signedField');
+            var signHint = document.getElementById('signHint');
+
+            function resizeCanvas(){
+                var ratio = Math.max(window.devicePixelRatio || 1, 1);
+                var w = canvas.offsetWidth;
+                var h = canvas.offsetHeight;
+                canvas.width = w * ratio;
+                canvas.height = h * ratio;
+                canvas.getContext("2d").scale(ratio, ratio);
+            }
+            resizeCanvas();
+            window.addEventListener('resize', resizeCanvas);
+
+            var sigPad = new SignaturePad(canvas, { minWidth: 0.7, maxWidth: 1.8, penColor: "#111" });
+
+            function updateProceedState(){
+                var hasSig = !sigPad.isEmpty();
+                proceedBtn.disabled = !hasSig;
+                signedField.value = hasSig ? "true" : "false";
+                signHint.style.display = hasSig ? 'none' : 'block';
+            }
+
+            sigPad.addEventListener("endStroke", updateProceedState);
+            clearBtn.addEventListener('click', function(){
+                sigPad.clear();
+                updateProceedState();
+            });
+
+            updateProceedState();
+
+            window.cancelLease = function(ev){
+                ev.preventDefault();
+                var form = document.createElement('form');
+                form.method = 'POST';
+                form.action = '@Url.Action("Cancel","Lease")';
+                form.innerHTML =
+                    '@Html.AntiForgeryToken()'.replace(/"/g,'&quot;') +
+                    '<input type="hidden" name="applicationId" value="@Model.ApplicationId" />' +
+                    '<input type="hidden" name="token" value="@Model.Token" />';
+                document.body.appendChild(form);
+                form.submit();
+                return false;
+            }
+        })();
+    </script>
+}
+
+
+    <style>
+        .paper {
+            background: #fdfcf7;
+            border: 1px solid #e3dfd4;
+            border-radius: 12px;
+            max-width: 900px;
+        }
+
+        .paper-inner {
+            padding: 2rem 2.25rem;
+            font-family: 'Special Elite', 'Courier New', Courier, monospace;
+            line-height: 1.5;
+            color: #222;
+        }
+
+        .doc-title {
+            margin: 0;
+            letter-spacing: .5px;
+        }
+
+        .doc-subtitle {
+            font-size: .95rem;
+            color: #555;
+            margin-top: .25rem;
+        }
+
+        .section {
+            margin-top: .75rem;
+            margin-bottom: .25rem;
+            text-transform: uppercase;
+            letter-spacing: .08em;
+            font-size: .95rem;
+        }
+
+        .clauses {
+            padding-left: 1.25rem;
+            margin-bottom: 0.5rem;
+        }
+
+            .clauses li {
+                margin-bottom: .5rem;
+            }
+
+        .sig-wrap {
+            border: 1px dashed #aaa;
+            border-radius: 6px;
+            padding: .75rem;
+            background: #fff;
+        }
+
+        .sig-canvas {
+            width: 100%;
+            height: 160px;
+            background: #fff;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            display: block;
+        }
+
+        .sig-footer {
+            margin-top: .5rem;
+            display: flex;
+            align-items: center;
+        }
+    </style>
+

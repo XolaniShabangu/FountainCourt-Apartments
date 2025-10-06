@@ -1,0 +1,336 @@
+﻿@model FountainCourtResidents.Models.ViewModels.ApplicationCreateVM
+@{
+    ViewBag.Title = "Apply";
+    Layout = "~/Views/Shared/_Layout.cshtml";
+}
+
+<h2>Apply</h2>
+
+<!-- Duplicate warning placeholder -->
+<div id="dupAlert" class="alert alert-warning d-none" role="alert"></div>
+
+@using (Html.BeginForm("Apply", "Applications", FormMethod.Post, new { enctype = "multipart/form-data", id = "applyForm" }))
+{
+    @Html.AntiForgeryToken()
+    @Html.HiddenFor(m => m.IdDocumentPath)
+    @Html.ValidationSummary(true, "", new { @class = "text-danger" })
+
+    <div class="form-group">
+        <label for="idFile"><strong>Step 1: Upload your ID document</strong> (image/PDF)</label>
+        <input type="file" id="idFile" name="idFile" class="form-control" accept=".pdf,image/*" />
+        <small class="text-muted">Upload your ID first, then click “Scan ID” to auto-fill your details.</small>
+        <div class="mt-2">
+            <button type="button" id="btnScanId" class="btn btn-secondary">Scan ID</button>
+            <span id="scanStatus" class="text-muted ml-2"></span>
+        </div>
+    </div>
+
+    <hr />
+
+    <div class="form-group">
+        @Html.LabelFor(m => m.FirstName)
+        @Html.TextBoxFor(
+            m => m.FirstName,
+            new
+            {
+                @class = "form-control",
+                autocomplete = "given-name",
+                @readonly = "readonly",
+                title = "Filled by OCR"
+            })
+        @Html.ValidationMessageFor(m => m.FirstName)
+    </div>
+
+    <div class="form-group">
+        @Html.LabelFor(m => m.LastName, "Surname")
+        @Html.TextBoxFor(
+            m => m.LastName,
+            new
+            {
+                @class = "form-control",
+                autocomplete = "family-name",
+                @readonly = "readonly",
+                title = "Filled by OCR"
+            })
+        @Html.ValidationMessageFor(m => m.LastName)
+    </div>
+
+    <div class="form-group">
+        @Html.LabelFor(m => m.NationalId, "ID Number")
+        @Html.TextBoxFor(
+            m => m.NationalId,
+            new
+            {
+                @class = "form-control",
+                placeholder = "13-digit SA ID",
+                @readonly = "readonly",
+                title = "Filled by OCR"
+            })
+        @Html.ValidationMessageFor(m => m.NationalId)
+    </div>
+
+    <div class="form-group">
+        @Html.LabelFor(m => m.Email)
+        @Html.TextBoxFor(m => m.Email, new { @class = "form-control", type = "email", autocomplete = "email", placeholder = "you@example.com" })
+        @Html.ValidationMessageFor(m => m.Email)
+    </div>
+
+    <div class="form-group">
+        @Html.LabelFor(m => m.Phone)
+        @Html.TextBoxFor(m => m.Phone, new { @class = "form-control", autocomplete = "tel", placeholder = "e.g. 082 123 4567" })
+        @Html.ValidationMessageFor(m => m.Phone)
+    </div>
+
+    <div class="form-group">
+        @Html.LabelFor(m => m.SelectedRoomTypeId, "Desired Room Type")
+        @Html.DropDownListFor(
+            m => m.SelectedRoomTypeId,
+            Model.RoomTypes ?? new List<SelectListItem>(),   // populated in GET/POST by GetRoomTypeSelectItems()
+            "-- Select a room type --",
+            new { @class = "form-control" }
+        )
+        @Html.ValidationMessageFor(m => m.SelectedRoomTypeId)
+    </div>
+
+    <hr />
+
+    <div class="form-group">
+        <label for="bankFile"><strong>Step 2: Upload your Bank Statement</strong> (PDF)</label>
+        <input type="file" id="bankFile" name="bankFile" class="form-control" accept=".pdf" />
+    </div>
+
+    <button type="submit" id="submitBtn" class="btn btn-primary">Submit Application</button>
+}
+
+<style>
+/* Apply page shell */
+#applyForm{
+  background: #ffffff;
+  border: 1px solid #eef2f7;
+  border-radius: 16px;
+  padding: 20px;
+  box-shadow: 0 12px 24px rgba(31,42,55,.06);
+}
+
+/* Heading spacing */
+h2 + #dupAlert { margin-top: 10px; }
+
+/* Duplicate alert styling */
+#dupAlert{
+  border-radius: 10px;
+  border: 1px solid #f6c57f;
+  background: linear-gradient(180deg, #fff8e6, #fff3d9);
+  color: #7a4d00;
+  font-weight: 600;
+}
+
+/* Form groups: compact, consistent spacing */
+#applyForm .form-group{ margin-bottom: 14px; }
+#applyForm label{ font-weight: 600; color: #1f2a37; margin-bottom: 6px; }
+#applyForm .text-danger{ font-size: 12px; }
+
+/* Inputs & selects */
+#applyForm .form-control{
+  border: 1px solid #e5e7eb;
+  border-radius: 10px;
+  padding: 10px 12px;
+  transition: box-shadow .15s ease, border-color .15s ease;
+}
+#applyForm .form-control:focus{
+  border-color: #0f81c7;
+  box-shadow: 0 0 0 3px rgba(15,129,199,.15);
+  outline: none;
+}
+
+/* File inputs: nicer button and text */
+#applyForm input[type="file"]{ padding: 10px 12px; }
+#applyForm input[type="file"]::file-selector-button{
+  border: 1px solid rgba(15,129,199,.25);
+  background: rgba(15,129,199,.08);
+  color: #0a6fab;
+  border-radius: 999px;
+  padding: 6px 12px;
+  margin-right: 10px;
+  cursor: pointer;
+  transition: filter .12s ease, transform .12s ease;
+}
+#applyForm input[type="file"]::file-selector-button:hover{ filter: brightness(1.05); }
+
+/* “Scan ID” ghost pill button */
+#btnScanId{
+  background: rgba(15,129,199,.08);
+  color: #0a6fab;
+  border: 1px solid rgba(15,129,199,.25);
+  border-radius: 999px;
+  padding: 8px 14px;
+  font-weight: 600;
+}
+#btnScanId:hover{ filter: brightness(1.05); }
+
+/* Scan status: subtle animated dots while scanning */
+#scanStatus{ font-size: 13px; }
+#scanStatus.scanning{ position: relative; padding-left: 8px; }
+#scanStatus.scanning::after{
+  content: "● ● ●";
+  letter-spacing: 3px;
+  position: relative;
+  top: -1px;
+  animation: dots 1s steps(3, end) infinite;
+  color: #0f81c7;
+}
+@@keyframes dots {
+  0% { clip-path: inset(0 2ch 0 0); }
+  50% { clip-path: inset(0 1ch 0 0); }
+  100% { clip-path: inset(0 0 0 0); }
+}
+
+/* Submit button: brand primary + right arrow on hover */
+#submitBtn.btn.btn-primary{
+  background: linear-gradient(180deg, #0f81c7 0%, #0a6fab 100%);
+  border: 1px solid #0a6fab;
+  border-radius: 10px;
+  font-weight: 700;
+  padding: 10px 16px;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+#submitBtn.btn.btn-primary::after{
+  content: "";
+  width: 18px; height: 18px;
+  background: currentColor;
+  -webkit-mask: url('data:image/svg+xml;utf8,<svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M5 12h12m0 0-5-5m5 5-5 5" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>') no-repeat center / contain;
+          mask: url('data:image/svg+xml;utf8,<svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M5 12h12m0 0-5-5m5 5-5 5" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>') no-repeat center / contain;
+  transform: translateX(0);
+  transition: transform .18s ease;
+}
+#submitBtn.btn.btn-primary:hover::after{ transform: translateX(3px); }
+
+/* Horizontal rules spacing */
+#applyForm hr{ border-color: #eef2f7; margin: 14px 0; }
+
+/* Small helper text */
+#applyForm small.text-muted{ color: #6b7280 !important; }
+
+/* Wider screens: keep it tidy */
+@@media (min-width: 992px){
+  #applyForm{
+    padding: 24px;
+    max-width: 820px;
+  }
+}
+</style>
+
+@section scripts {
+    <!-- If not already in your layout: -->
+    <script src="~/Scripts/jquery.validate.min.js"></script>
+    <script src="~/Scripts/jquery.validate.unobtrusive.min.js"></script>
+
+    <script>
+    (function () {
+        // Fallback CSS for d-none if Bootstrap isn't present
+        (function ensureDNone(){
+            var has = Array.prototype.slice.call(document.styleSheets)
+                .some(ss => { try { return ss.ownerNode && ss.ownerNode.textContent && ss.ownerNode.textContent.indexOf('.d-none') >= 0; } catch(e){ return false; }});
+            if (!has) {
+                var style = document.createElement('style');
+                style.textContent = '.d-none{ display:none !important; }';
+                document.head.appendChild(style);
+            }
+        })();
+
+        var btn = document.getElementById('btnScanId');
+        var idInput = document.getElementById('idFile');
+        var statusEl = document.getElementById('scanStatus');
+        var dupAlert = document.getElementById('dupAlert');
+        var submitBtn = document.getElementById('submitBtn');
+
+        var firstField = document.getElementById('@Html.IdFor(m => m.FirstName)');
+        var lastField  = document.getElementById('@Html.IdFor(m => m.LastName)');
+        var idField    = document.getElementById('@Html.IdFor(m => m.NationalId)');
+        var idDocPathField = document.getElementById('@Html.IdFor(m => m.IdDocumentPath)');
+
+        function getRequestVerificationToken() {
+            var tokenInput = document.querySelector('input[name="__RequestVerificationToken"]');
+            return tokenInput ? tokenInput.value : '';
+        }
+
+        // If user re-scans or edits files, clear duplicate banner and re-enable submit
+        function clearDupWarning() {
+            if (dupAlert) dupAlert.classList.add('d-none');
+            if (submitBtn) submitBtn.disabled = false;
+        }
+
+        if (idInput) {
+            idInput.addEventListener('change', function () {
+                clearDupWarning();
+                if (statusEl) { statusEl.textContent = ''; statusEl.classList.remove('scanning'); } // visual only
+                // clear OCR fields when the file changes
+                if (firstField) firstField.value = '';
+                if (lastField)  lastField.value  = '';
+                if (idField)    idField.value    = '';
+                if (idDocPathField) idDocPathField.value = '';
+            });
+        }
+
+        btn.addEventListener('click', function () {
+            if (!idInput.files || idInput.files.length === 0) {
+                statusEl.textContent = "Please choose an ID file first.";
+                statusEl.classList.remove('scanning'); // visual only
+                return;
+            }
+            statusEl.textContent = "Scanning...";
+            statusEl.classList.add('scanning'); // visual only (animated dots)
+
+            var fd = new FormData();
+            fd.append('idFile', idInput.files[0]);
+            fd.append('__RequestVerificationToken', getRequestVerificationToken());
+
+            fetch('@Url.Action("ScanId","Applications")', {
+                method: 'POST',
+                credentials: 'same-origin',
+                body: fd
+            })
+            .then(async r => {
+                const ct = r.headers.get('content-type') || '';
+                if (!ct.includes('application/json')) {
+                    const text = await r.text();
+                    throw new Error('Non-JSON response (likely anti-forgery/auth redirect): ' + text.substring(0, 200));
+                }
+                return r.json();
+            })
+            .then(j => {
+                if (!j.ok) {
+                    statusEl.textContent = j.message || "Failed to scan.";
+                    statusEl.classList.remove('scanning'); // visual only
+                    return;
+                }
+                statusEl.textContent = j.message || "ID scanned.";
+                statusEl.classList.remove('scanning'); // visual only
+
+                if (j.data) {
+                    if (j.data.firstName && firstField) firstField.value = j.data.firstName;
+                    if (j.data.lastName  && lastField)  lastField.value  = j.data.lastName;
+                    if (j.data.nationalId && idField)   idField.value    = j.data.nationalId;
+                    if (j.data.idDocumentPath && idDocPathField) idDocPathField.value = j.data.idDocumentPath;
+
+                    // Duplicate handling
+                    if (j.data.alreadyExists) {
+                        if (dupAlert) {
+                            dupAlert.textContent = "You already applied. Status: " + (j.data.existingStatus || "Unknown") + ".";
+                            dupAlert.classList.remove('d-none');
+                        }
+                        if (submitBtn) submitBtn.disabled = true;
+                    } else {
+                        clearDupWarning();
+                    }
+                }
+            })
+            .catch(e => {
+                statusEl.textContent = "Scan error: " + e.message;
+                statusEl.classList.remove('scanning'); // visual only
+            });
+        });
+    })();
+    </script>
+}

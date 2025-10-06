@@ -1,0 +1,234 @@
+﻿@model FountainCourtResidents.Models.ViewModels.LandlordRepairmenVM
+@{
+    ViewBag.Title = "Repairmen";
+    Layout = "~/Views/Shared/_Layout.cshtml";
+}
+
+<h2>Repairmen</h2>
+
+@if (TempData["ok"] != null)
+{
+    <div class="alert alert-success">@TempData["ok"]</div>
+}
+
+<p>
+    <a class="btn btn-success"
+       data-bs-toggle="collapse"
+       href="#addNewPanel"
+       role="button"
+       aria-expanded="@(Model.ShowForm ? "true" : "false")"
+       aria-controls="addNewPanel">
+        + Add New Repairman
+    </a>
+</p>
+
+<div id="addNewPanel" class="@(Model.ShowForm ? "collapse show" : "collapse")">
+    <div class="card card-body mb-4">
+        <h4 class="mb-3">Add Repairman</h4>
+        @using (Html.BeginForm("Create", "Repairmen", FormMethod.Post, new { @class = "form" }))
+        {
+            @Html.AntiForgeryToken()
+            @Html.ValidationSummary(true, "", new { @class = "text-danger" })
+
+            <div class="form-row">
+                <div class="form-group col-md-6">
+                    @Html.LabelFor(m => m.New.FirstName)
+                    @Html.TextBoxFor(m => m.New.FirstName, new { @class = "form-control", placeholder = "First name" })
+                    @Html.ValidationMessageFor(m => m.New.FirstName)
+                </div>
+                <div class="form-group col-md-6">
+                    @Html.LabelFor(m => m.New.LastName)
+                    @Html.TextBoxFor(m => m.New.LastName, new { @class = "form-control", placeholder = "Last name" })
+                    @Html.ValidationMessageFor(m => m.New.LastName)
+                </div>
+            </div>
+
+            <div class="form-row">
+                <div class="form-group col-md-6">
+                    @Html.LabelFor(m => m.New.Email)
+                    @Html.TextBoxFor(m => m.New.Email, new { @class = "form-control", type = "email", placeholder = "name@example.com" })
+                    @Html.ValidationMessageFor(m => m.New.Email)
+                </div>
+                <div class="form-group col-md-6">
+                    @Html.LabelFor(m => m.New.Phone)
+                    @Html.TextBoxFor(m => m.New.Phone, new { @class = "form-control", placeholder = "e.g. 082 123 4567" })
+                    @Html.ValidationMessageFor(m => m.New.Phone)
+                </div>
+            </div>
+
+            <div class="form-row">
+                @*<div class="form-group col-md-4">
+                    @Html.LabelFor(m => m.New.Rating, "Rating (1–5)")
+                    @Html.TextBoxFor(m => m.New.Rating, new { @class = "form-control", type = "number", min = "1", max = "5", step = "1" })
+                    @Html.ValidationMessageFor(m => m.New.Rating)
+                </div>*@
+                <div class="form-group col-md-4 d-flex align-items-end">
+                    <label class="form-check-label">
+                        @Html.CheckBoxFor(m => m.New.IsActive, new { @class = "form-check-input" })
+                        Active
+                    </label>
+                </div>
+            </div>
+
+            <button type="submit" class="btn btn-primary">Save</button>
+        }
+    </div>
+</div>
+
+<table class="table table-striped table-bordered">
+    <thead>
+        <tr>
+            <th>Name</th>
+            <th>Email</th>
+            <th>Cell</th>
+            <th class="text-right">Rating</th>
+            <th>Status</th>
+            <th style="width:180px"></th>
+        </tr>
+    </thead>
+    <tbody>
+        @foreach (var r in Model.Items)
+        {
+            <tr>
+                <td>@(r.FirstName + " " + r.LastName)</td>
+                <td>@r.Email</td>
+                <td>@r.Phone</td>
+                <td class="text-right">
+                    @(r.Rating.HasValue ? r.Rating.Value.ToString("0.0") : "-")
+                </td>
+
+                <td>
+                    @if (r.IsActive)
+                    {<span class="badge badge-success">Active</span> }
+                    else
+                    { <span class="badge badge-secondary">Inactive</span>}
+                </td>
+                <td>
+                    @using (Html.BeginForm("ToggleActive", "Repairmen", FormMethod.Post, new { @class = "d-inline" }))
+                    {
+                        @Html.AntiForgeryToken()
+                        @Html.Hidden("id", r.Id)
+                        <button type="submit" class="btn btn-sm @(r.IsActive ? "btn-warning" : "btn-info")">
+                            @(r.IsActive ? "Deactivate" : "Activate")
+                        </button>
+                    }
+                </td>
+            </tr>
+        }
+    </tbody>
+</table>
+
+@section scripts{
+    <script src="~/Scripts/jquery.validate.min.js"></script>
+    <script src="~/Scripts/jquery.validate.unobtrusive.min.js"></script>
+}
+
+<style>
+    .text-right {
+        text-align: right;
+    }
+
+    .badge {
+        padding: .35em .6em;
+    }
+
+    .card {
+        border-radius: .75rem;
+    }
+
+    /* ============================
+   Repairmen – non-destructive polish
+   ============================ */
+
+/* Only animate the Add panel (prevents navbar collapse issues) */
+#addNewPanel.collapse { transition: height .22s ease, opacity .22s ease; }
+#addNewPanel.collapse:not(.show){ opacity: 0; }
+#addNewPanel.collapse.show{ opacity: 1; }
+
+/* Add New button */
+.btn.btn-success{
+  background: linear-gradient(180deg,#16a34a 0%, #12803b 100%);
+  border: 1px solid #12803b;
+  border-radius: 999px;
+  font-weight: 700;
+  padding: 8px 16px;
+  box-shadow: 0 6px 16px rgba(22,163,74,.18);
+}
+.btn.btn-success:hover{ filter: brightness(1.05); }
+
+/* Form card */
+#addNewPanel .card{
+  border: 1px solid #eef2f7;
+  border-radius: 14px;
+  box-shadow: 0 12px 28px rgba(31,42,55,.06);
+}
+#addNewPanel h4{ font-weight: 700; color:#1f2a37; }
+
+/* Form controls */
+#addNewPanel .form-group{ margin-bottom: 14px; }
+#addNewPanel label{ font-weight: 600; color:#1f2a37; margin-bottom: 6px; }
+#addNewPanel .form-control{
+  border: 1px solid #e5e7eb;
+  border-radius: 10px;
+  padding: 10px 12px;
+  transition: box-shadow .15s ease, border-color .15s ease;
+}
+#addNewPanel .form-control:focus{
+  border-color:#0f81c7;
+  box-shadow:0 0 0 3px rgba(15,129,199,.15);
+  outline:none;
+}
+
+/* Primary Save button */
+#addNewPanel .btn.btn-primary{
+  background: linear-gradient(180deg,#0f81c7 0%, #0a6fab 100%);
+  border: 1px solid #0a6fab;
+  border-radius: 10px;
+  font-weight: 700;
+  padding: 10px 16px;
+}
+
+/* Table polish */
+table.table{
+  border: 1px solid #eef2f7;
+  border-radius: 12px;
+  overflow: hidden; /* round thead corners */
+  background: #fff;
+}
+table.table thead th{
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  background: #f8fafc;
+  color: #1f2a37;
+  border-bottom: 1px solid #eef2f7 !important;
+  font-weight: 700;
+  vertical-align: middle;
+}
+table.table tbody tr{ transition: background-color .12s ease; }
+table.table tbody tr:hover{ background: #fafcff; }
+
+/* Numbers right-aligned + tabular */
+.text-right{ text-align: right; font-variant-numeric: tabular-nums; }
+
+/* Badges (Bootstrap 4 style classes in your markup) */
+.badge{ border-radius: 999px; padding: .35em .6em; font-weight: 700; }
+.badge-success{ background-color:#16a34a; color:#fff; }
+.badge-secondary{ background-color:#94a3b8; color:#fff; }
+
+/* Action buttons in table */
+.btn.btn-sm.btn-warning{
+  background:#f59e0b; border-color:#f59e0b; color:#111827;
+  border-radius:8px; font-weight:700; padding:.35rem .6rem;
+}
+.btn.btn-sm.btn-info{
+  background:#0ea5e9; border-color:#0ea5e9; color:#fff;
+  border-radius:8px; font-weight:700; padding:.35rem .6rem;
+}
+
+/* Small-screen tweaks */
+@@media (max-width: 576px){
+  #addNewPanel .card-body{ padding: 14px; }
+  table.table thead th{ font-size: .92rem; }
+}
+</style>

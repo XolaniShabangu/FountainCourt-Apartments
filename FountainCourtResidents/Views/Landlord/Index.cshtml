@@ -1,0 +1,308 @@
+﻿@model FountainCourtResidents.Models.ViewModels.LandlordRoomTypesVM
+@{
+    ViewBag.Title = "Room Types";
+    Layout = "~/Views/Shared/_Layout.cshtml";
+    var collapseClass = Model.ShowForm ? "collapse show" : "collapse";
+}
+
+<h2>Room Types</h2>
+
+@if (TempData["ok"] != null)
+{
+    <div class="alert alert-success">@TempData["ok"]</div>
+}
+
+<!-- Add New button (toggles the collapse) -->
+<p>
+    <a class="btn btn-success"
+       data-bs-toggle="collapse"
+       href="#addNewPanel"
+       role="button"
+       aria-expanded="@(Model.ShowForm ? "true" : "false")"
+       aria-controls="addNewPanel">
+        + Add New Room Type
+    </a>
+</p>
+
+<div id="addNewPanel" class="@(Model.ShowForm ? "collapse show" : "collapse")">
+    <div class="card card-body mb-4">
+        <h4 class="mb-3">Add Room Type</h4>
+        @using (Html.BeginForm("Create", "Landlord", FormMethod.Post, new { @class = "form" }))
+        {
+            @Html.AntiForgeryToken()
+            @Html.ValidationSummary(true, "", new { @class = "text-danger" })
+
+            <div class="form-group">
+                @Html.LabelFor(m => m.NewRoomType.Name)
+                @Html.TextBoxFor(m => m.NewRoomType.Name, new { @class = "form-control", placeholder = "e.g. Studio" })
+                @Html.ValidationMessageFor(m => m.NewRoomType.Name)
+            </div>
+
+            <div class="form-group">
+                @Html.LabelFor(m => m.NewRoomType.PricePerMonth, "Price per month (ZAR)")
+                @Html.TextBoxFor(m => m.NewRoomType.PricePerMonth, new { @class = "form-control", type = "number", step = "0.01", min = "0" })
+                @Html.ValidationMessageFor(m => m.NewRoomType.PricePerMonth)
+            </div>
+
+            <div class="form-group">
+                @Html.LabelFor(m => m.NewRoomType.SquareMeters, "Size (m²)")
+                @Html.TextBoxFor(m => m.NewRoomType.SquareMeters, new { @class = "form-control", type = "number", step = "1", min = "0" })
+                @Html.ValidationMessageFor(m => m.NewRoomType.SquareMeters)
+            </div>
+
+            <div class="form-group">
+                @Html.LabelFor(m => m.NewRoomType.TotalUnits, "Total units")
+                @Html.TextBoxFor(m => m.NewRoomType.TotalUnits, new { @class = "form-control", type = "number", step = "1", min = "0" })
+                @Html.ValidationMessageFor(m => m.NewRoomType.TotalUnits)
+                <small class="text-muted d-block">How many apartments of this type exist.</small>
+            </div>
+
+            <div class="form-group">
+                @Html.LabelFor(m => m.NewRoomType.UnitsAvailable, "Units available")
+                @Html.TextBoxFor(m => m.NewRoomType.UnitsAvailable, new { @class = "form-control", type = "number", step = "1", min = "0" })
+                @Html.ValidationMessageFor(m => m.NewRoomType.UnitsAvailable)
+                <small class="text-muted d-block">If 0 and Total &gt; 0, it will default to Total.</small>
+            </div>
+
+            <div class="form-group form-check">
+                <label class="form-check-label">
+                    @Html.CheckBoxFor(m => m.NewRoomType.IsActive, new { @class = "form-check-input" }) Active (visible in Apply dropdown)
+                </label>
+            </div>
+
+            <button type="submit" class="btn btn-primary">Save</button>
+        }
+    </div>
+</div>
+
+<table class="table table-striped table-bordered">
+    <thead>
+        <tr>
+            <th>Name</th>
+            <th class="text-right">Price / month</th>
+            <th class="text-right">m²</th>
+            <th class="text-right">Total</th>
+            <th class="text-right">Available</th>
+            <th>Active</th>
+            <th style="width:180px"></th>
+        </tr>
+    </thead>
+    <tbody>
+        @foreach (var rt in Model.Items)
+        {
+            <tr>
+                <td>@rt.Name</td>
+                <td class="text-right">R @rt.PricePerMonth.ToString("N0")</td>
+                <td class="text-right">@rt.SquareMeters</td>
+                <td class="text-right">@rt.TotalUnits</td>
+                <td class="text-right">@rt.UnitsAvailable</td>
+                <td>
+                    @if (rt.IsActive)
+                    {<span class="badge bg-success text-white">Active</span> }
+                    else
+                    { <span class="badge bg-danger text-white">Hidden</span>}
+                </td>
+                <td>
+                    @using (Html.BeginForm("ToggleActive", "Landlord", FormMethod.Post, new { @class = "d-inline" }))
+                    {
+                        @Html.AntiForgeryToken()
+                        @Html.Hidden("id", rt.Id)
+                        <button type="submit" class="btn btn-sm @(rt.IsActive ? "btn-warning" : "btn-info")">
+                            @(rt.IsActive ? "Deactivate" : "Activate")
+                        </button>
+                    }
+                    @* Placeholders for future Edit/Delete *@
+                    @* @Html.ActionLink("Edit", "Edit", new { id = rt.Id }, new { @class = "btn btn-sm btn-outline-primary ml-1" }) *@
+                </td>
+            </tr>
+            <tr>
+                <td colspan="7">
+                    <strong>Rooms:</strong>
+                    <ul>
+                        @foreach (var room in rt.Rooms.OrderBy(r => r.AutoNumber))
+                        {
+                            <li>
+                                @room.Number
+                                @if (room.IsOccupied)
+                                {
+                                    <span class="badge bg-danger text-white">Occupied</span>
+                                }
+                                else
+                                {
+                                    <span class="badge bg-success text-white">Available</span>
+                                }
+                            </li>
+                        }
+                    </ul>
+                </td>
+
+            </tr>
+
+        }
+    </tbody>
+</table>
+
+@section scripts {
+    <script src="~/Scripts/jquery.validate.min.js"></script>
+    <script src="~/Scripts/jquery.validate.unobtrusive.min.js"></script>
+}
+
+
+<style>
+        .text-right {
+            text-align: right;
+        }
+
+        .badge {
+            padding: 0.35em 0.6em;
+        }
+
+        .card {
+            border-radius: .75rem;
+        }
+
+        <style>
+/* ============================
+   Room Types – Non-destructive polish
+   (safe to drop-in; no HTML changes)
+   ============================ */
+
+/* Headline spacing */
+h2 + p > .btn.btn-success { margin-top: .25rem; }
+
+/* Brand button (Add New) */
+.btn.btn-success{
+  background: linear-gradient(180deg,#16a34a 0%, #12803b 100%);
+  border: 1px solid #12803b;
+  border-radius: 999px;
+  font-weight: 700;
+  padding: 8px 16px;
+  box-shadow: 0 6px 16px rgba(22,163,74,.18);
+}
+.btn.btn-success:hover{ filter: brightness(1.05); }
+
+    /* Only affect the Add Room Type panel */
+    #addNewPanel.collapse {
+        transition: height .22s ease, opacity .22s ease;
+    }
+
+        #addNewPanel.collapse:not(.show) {
+            opacity: 0;
+        }
+
+        #addNewPanel.collapse.show {
+            opacity: 1;
+        }
+
+
+/* Add form card */
+#addNewPanel .card{
+  border: 1px solid #eef2f7;
+  border-radius: 14px;
+  box-shadow: 0 12px 28px rgba(31,42,55,.06);
+}
+#addNewPanel .card-body{ padding: 18px; }
+#addNewPanel h4{ font-weight: 700; color:#1f2a37; }
+
+/* Form controls */
+#addNewPanel .form-group{ margin-bottom: 14px; }
+#addNewPanel label{ font-weight: 600; color:#1f2a37; margin-bottom: 6px; }
+#addNewPanel .form-control{
+  border: 1px solid #e5e7eb;
+  border-radius: 10px;
+  padding: 10px 12px;
+  transition: box-shadow .15s ease, border-color .15s ease;
+}
+#addNewPanel .form-control:focus{
+  border-color: #0f81c7;
+  box-shadow: 0 0 0 3px rgba(15,129,199,.15);
+  outline: none;
+}
+#addNewPanel .text-muted{ color:#6b7280 !important; }
+
+/* Primary Save button */
+#addNewPanel .btn.btn-primary{
+  background: linear-gradient(180deg, #0f81c7 0%, #0a6fab 100%);
+  border: 1px solid #0a6fab;
+  border-radius: 10px;
+  font-weight: 700;
+  padding: 10px 16px;
+}
+
+/* Table: tidy, sticky head, hover rows */
+table.table{
+  border: 1px solid #eef2f7;
+  border-radius: 12px;
+  overflow: hidden;           /* rounds thead corners */
+  background: #fff;
+}
+table.table thead th{
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  background: #f8fafc;
+  color: #1f2a37;
+  border-bottom: 1px solid #eef2f7 !important;
+  font-weight: 700;
+  vertical-align: middle;
+  font-variant-numeric: tabular-nums; /* nice aligned numbers */
+}
+table.table tbody tr{
+  transition: background-color .12s ease;
+}
+table.table tbody tr:hover{
+  background: #fafcff;
+}
+
+/* Numeric columns already right-aligned via .text-right */
+.text-right{ text-align: right; font-variant-numeric: tabular-nums; }
+
+/* Badges consistent with brand */
+.badge{
+  padding: .35em .6em;
+  border-radius: 999px;
+  font-weight: 700;
+}
+.badge.bg-success{ background-color:#16a34a !important; }
+.badge.bg-danger { background-color:#dc2626 !important; }
+
+/* Action buttons: Activate/Deactivate */
+.btn.btn-sm.btn-warning{
+  background: #f59e0b;
+  border-color: #f59e0b;
+  color: #111827;
+  font-weight: 700;
+  border-radius: 8px;
+  padding: .35rem .6rem;
+}
+.btn.btn-sm.btn-info{
+  background: #0ea5e9;
+  border-color: #0ea5e9;
+  color: #fff;
+  font-weight: 700;
+  border-radius: 8px;
+  padding: .35rem .6rem;
+}
+
+/* Rooms list row (secondary row) */
+table.table tbody tr + tr td{
+  background: #fcfdfd;
+  border-top: 1px dashed #eef2f7;
+}
+table.table tbody ul{
+  margin: 8px 0 0;
+  padding-left: 18px;
+}
+table.table tbody ul li{
+  margin: 4px 0;
+}
+
+/* Mobile niceties */
+@@media (max-width: 576px){
+  #addNewPanel .card-body{ padding: 14px; }
+  table.table thead th{ font-size: .92rem; }
+}
+</style>
+
+    </style>
+

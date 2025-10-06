@@ -1,0 +1,139 @@
+﻿@model FountainCourtResidents.Models.ViewModels.AdminMaintenanceVM
+@{
+    ViewBag.Title = "Maintenance";
+    Layout = "~/Views/Shared/_Layout.cshtml";
+}
+
+<h2 class="mb-3">Maintenance</h2>
+
+<div class="d-flex flex-wrap mb-3">
+    <div class="mr-4 mb-2"><span class="badge bg-danger text-white">Open</span> <strong>@Model.OpenCount</strong></div>
+    <div class="mr-4 mb-2"><span class="badge bg-warning text-dark">In Progress</span> <strong>@Model.InProgressCount</strong></div>
+    <div class="mb-2"><span class="badge bg-success text-white">Closed</span> <strong>@Model.ClosedCount</strong></div>
+</div>
+
+<div class="table-responsive">
+    <table class="table table-sm table-striped align-middle">
+        <thead>
+            <tr>
+                <th>Created</th>
+                <th>Title</th>
+                <th>Priority</th>
+                <th>Status</th>
+                <th>Tenant</th>
+                <th>Unit</th>
+                <th>Assigned</th>
+                <th>Rating</th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var t in Model.Items)
+            {
+                <tr>
+                    <td>@t.CreatedUtc.ToLocalTime().ToString("yyyy-MM-dd HH:mm")</td>
+                    <td>@t.Title</td>
+                    <td>
+                        <span class="badge @(t.Priority == FountainCourtResidents.Models.MaintenancePriority.Urgent
+                         ? "bg-danger text-white"
+                         : t.Priority == FountainCourtResidents.Models.MaintenancePriority.High
+                           ? "bg-warning text-dark"
+                           : "bg-secondary text-white")">
+                            @t.Priority
+                        </span>
+                    </td>
+                    <td>
+                        <span class="badge @(t.Status == FountainCourtResidents.Models.MaintenanceStatus.Open
+                         ? "bg-danger text-white"
+                         : t.Status == FountainCourtResidents.Models.MaintenanceStatus.InProgress
+                           ? "bg-warning text-dark"
+                           : "bg-success text-white")">
+                            @t.Status
+                        </span>
+                    </td>
+                    <td>
+                        @t.TenantName
+                        @if (!string.IsNullOrWhiteSpace(t.TenantEmail))
+                        {<div class="text-muted"><a href="mailto:@t.TenantEmail">@t.TenantEmail</a></div>}
+                        @if (!string.IsNullOrWhiteSpace(t.TenantPhone))
+                        {<div class="text-muted"><a href="tel:@t.TenantPhone">@t.TenantPhone</a></div>}
+                    </td>
+                    <td>@(string.IsNullOrWhiteSpace(t.Unit) ? "-" : t.Unit)</td>
+                    <td>@(string.IsNullOrWhiteSpace(t.AssignedTo) ? "-" : t.AssignedTo)</td>
+                    <td>
+                        @if (t.Rating.HasValue)
+                        {
+                            var r = Math.Max(0, Math.Min(5, t.Rating.Value));
+                            var full = new string('★', r);
+                            var empty = new string('☆', 5 - r);
+                            <span class="text-warning" style="font-size:1rem">@full</span><span class="text-muted" style="font-size:1rem">@empty</span>
+                        }
+                        else
+                        {
+                            <span class="text-muted">–</span>
+                        }
+                    </td>
+                </tr>
+            }
+        </tbody>
+    </table>
+</div>
+
+<style>
+/* =========================================
+   Maintenance – Top counts (Open/In Progress/Closed)
+   Non-destructive, scoped to this page’s layout
+   ========================================= */
+
+/* The counters bar (the div immediately after the H2) */
+h2.mb-3 + .d-flex.flex-wrap.mb-3{
+  gap: 10px 14px; /* nicer spacing between chips */
+}
+
+/* Each chip */
+h2.mb-3 + .d-flex.flex-wrap.mb-3 > div{
+  background: #ffffff;
+  border: 1px solid #eef2f7;
+  border-radius: 12px;
+  padding: 10px 12px;
+  box-shadow: 0 8px 20px rgba(31,42,55,.06);
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  line-height: 1.2;
+}
+
+/* Badge look inside the chip */
+h2.mb-3 + .d-flex.flex-wrap.mb-3 > div .badge{
+  border-radius: 999px;
+  font-weight: 700;
+  padding: .35em .6em;
+  box-shadow: 0 2px 8px rgba(0,0,0,.08);
+}
+
+/* Harmonize badge colors (keeps your bg-* classes) */
+.badge.bg-danger.text-white{ background-color:#dc2626 !important; }
+.badge.bg-warning.text-dark{ background-color:#f59e0b !important; color:#111827 !important; }
+.badge.bg-success.text-white{ background-color:#16a34a !important; }
+
+/* Big number emphasis */
+h2.mb-3 + .d-flex.flex-wrap.mb-3 > div strong{
+  font-size: 1.35rem;
+  font-weight: 800;
+  color: #111827;
+  letter-spacing: .2px;
+}
+
+/* Subtle hover for desktop */
+@@media (hover: hover){
+  h2.mb-3 + .d-flex.flex-wrap.mb-3 > div:hover{
+    transform: translateY(-1px);
+    box-shadow: 0 12px 28px rgba(31,42,55,.08);
+    transition: transform .12s ease, box-shadow .12s ease;
+  }
+}
+
+/* Small screens: keep it compact */
+@@media (max-width: 576px){
+  h2.mb-3 + .d-flex.flex-wrap.mb-3 > div strong{ font-size: 1.15rem; }
+}
+</style>

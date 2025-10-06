@@ -1,0 +1,294 @@
+﻿@model FountainCourtResidents.Models.ViewModels.RepairmanTicketsVM
+@{
+    ViewBag.Title = "My Tickets";
+    var za = new System.Globalization.CultureInfo("en-ZA");
+}
+
+<h2 class="mb-2">My Tickets</h2>
+
+<div class="mb-3 p-3 bg-light border rounded">
+    <div class="d-flex flex-wrap align-items-center">
+        @*<div class="mr-4 mb-2">
+            <strong>Open:</strong> @Model.OpenCount
+        </div>
+        <div class="mr-4 mb-2">
+            <strong>In&nbsp;Progress:</strong> @Model.InProgressCount
+        </div>*@
+        <div class="mr-4 mb-2">
+            <strong>Closed:</strong> @Model.ClosedCount
+        </div>
+        <div class="mb-2 d-flex align-items-center">
+            <strong class="mr-2">Your rating:</strong>
+            @{
+                if (Model.Rating.HasValue)
+                {
+                    var r = (int)Math.Round(Model.Rating.Value, MidpointRounding.AwayFromZero);
+                    r = Math.Max(0, Math.Min(5, r));
+                    var filled = new string('★', r);
+                    var empty = new string('☆', 5 - r);
+                    <span class="repairman-stars" title="@Model.Rating.Value.ToString("0.0")/5">
+                        @filled@empty <span class="text-muted ml-1">(@Model.Rating.Value.ToString("0.0"))</span>
+                    </span>
+                }
+                else
+                {
+                    <span class="text-muted">—</span>
+                }
+            }
+        </div>
+    </div>
+</div>
+
+<div class="text-muted mb-3">Hello, @Model.FullName</div>
+
+@if (!Model.Items.Any())
+{
+    <div class="alert alert-info">No tickets assigned to you yet.</div>
+}
+else
+{
+    @Html.AntiForgeryToken()
+
+    <div class="table-responsive">
+        <table class="table table-sm table-striped align-middle">
+            <thead>
+                <tr>
+                    <th>Created</th>
+                    <th>Title</th>
+                    <th>Priority</th>
+                    <th>Status</th>
+                    <th>Tenant</th>
+                    <th>Unit</th>
+                    <th style="width:220px">Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                @{
+                    bool closedHeaderInserted = false;
+                }
+                @foreach (var t in Model.Items)
+                {
+                    // Insert a visual separator when we hit the first Closed ticket
+                    if (!closedHeaderInserted && t.Status == FountainCourtResidents.Models.MaintenanceStatus.Closed)
+                    {
+                        closedHeaderInserted = true;
+                        <tr class="table-active">
+                            <td colspan="7" class="font-weight-bold">Closed</td>
+                        </tr>
+                    }
+
+                    <tr>
+                        <td>@t.CreatedUtc.ToLocalTime().ToString("yyyy-MM-dd HH:mm")</td>
+                        <td>
+                            <div class="font-weight-bold">@t.Title</div>
+                            @if (!string.IsNullOrWhiteSpace(t.DescriptionShort))
+                            {<div class="text-muted" style="max-width:480px">@t.DescriptionShort</div>}
+                        </td>
+                        <td>
+                            <span class="badge @(t.Priority == FountainCourtResidents.Models.MaintenancePriority.Urgent
+                                 ? "bg-danger text-white"
+                                 : t.Priority == FountainCourtResidents.Models.MaintenancePriority.High
+                                   ? "bg-warning text-dark"
+                                   : "bg-secondary text-white")">
+                                @t.Priority
+                            </span>
+                        </td>
+                        <td>
+                            <span class="badge @(t.Status == FountainCourtResidents.Models.MaintenanceStatus.Open
+                                 ? "bg-danger text-white"
+                                 : t.Status == FountainCourtResidents.Models.MaintenanceStatus.InProgress
+                                   ? "bg-warning text-dark"
+                                   : "bg-success text-white")">
+                                @t.Status
+                            </span>
+                        </td>
+                        <td>
+                            @t.TenantName
+                            @if (!string.IsNullOrWhiteSpace(t.TenantEmail))
+                            {<div class="text-muted"><a href="mailto:@t.TenantEmail">@t.TenantEmail</a></div>}
+                            @if (!string.IsNullOrWhiteSpace(t.TenantPhone))
+                            {<div class="text-muted"><a href="tel:@t.TenantPhone">@t.TenantPhone</a></div>}
+                        </td>
+                        <td>@(string.IsNullOrWhiteSpace(t.UnitLabel) ? "-" : t.UnitLabel)</td>
+                        <td>
+                            <div class="btn-group btn-group-sm" role="group">
+                                <button class="btn btn-outline-primary"
+                                        onclick="setStatus(@t.Id,'InProgress',this)"
+                                        @(t.Status == FountainCourtResidents.Models.MaintenanceStatus.Open ? null : "disabled")>
+                                    Start
+                                </button>
+                                <button class="btn btn-outline-success"
+                                        onclick="setStatus(@t.Id,'Closed',this)"
+                                        @(t.Status == FountainCourtResidents.Models.MaintenanceStatus.Closed ? "disabled" : null)>
+                                    Close
+                                </button>
+                            </div>
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+}
+
+@section scripts{
+    <style>
+        /* Bigger stars for the header rating */
+        .repairman-stars {
+            font-size: 22px;
+            line-height: 1;
+        }
+
+        /* =========================================
+   Repairman – My Tickets (non-destructive)
+   ========================================= */
+
+/* Header stats panel */
+h2.mb-2 + .mb-3.p-3.bg-light.border.rounded{
+  background: linear-gradient(180deg,#f8fbff,#ffffff);
+  border: 1px solid #eef2f7 !important;
+  border-radius: 14px !important;
+  box-shadow: 0 10px 24px rgba(31,42,55,.06);
+}
+h2.mb-2 + .mb-3 .d-flex > .mr-4,
+h2.mb-2 + .mb-3 .d-flex > .mb-2{
+  background:#fff;
+  border:1px solid #eef2f7;
+  border-radius:12px;
+  padding:8px 12px;
+  margin-right:14px !important;
+  box-shadow:0 6px 16px rgba(31,42,55,.06);
+  display:inline-flex;
+  align-items:center;
+  gap:8px;
+}
+.repairman-stars{
+  font-size: 22px; line-height:1; /* you already set this in-page; repeated safely */
+}
+.repairman-stars .text-muted{ font-size: 14px; }
+
+/* Hello line */
+.text-muted.mb-3{ color:#6b7280 !important; }
+
+/* Table shell */
+.table-responsive{
+  border-radius: 12px;
+  overflow: hidden;
+  box-shadow: 0 10px 24px rgba(31,42,55,.05);
+}
+.table.table-sm{
+  background:#fff;
+  border:1px solid #eef2f7;
+}
+.table thead th{
+  background:#f8fafc;
+  border-bottom:1px solid #eef2f7;
+  color:#1f2a37;
+  font-weight:700;
+  vertical-align:middle;
+}
+.table td, .table th{
+  vertical-align:middle;
+  font-variant-numeric: tabular-nums;
+}
+.table tbody tr:hover{ background:#fafcff; }
+
+/* “Closed” separator row you inject */
+.table tbody tr.table-active td{
+  background:#f1f5f9 !important;
+  color:#0f172a;
+  border-top:1px solid #e2e8f0;
+  border-bottom:1px solid #e2e8f0;
+  text-transform:uppercase;
+  letter-spacing:.3px;
+}
+
+/* Badges (keep your classes) */
+.badge.bg-danger.text-white   { background-color:#dc2626 !important; }
+.badge.bg-warning.text-dark   { background-color:#f59e0b !important; color:#111827 !important; }
+.badge.bg-success.text-white  { background-color:#16a34a !important; }
+.badge.bg-secondary.text-white{ background-color:#94a3b8 !important; }
+
+/* Title + description clipping */
+.font-weight-bold{ color:#111827; }
+.text-muted{ color:#6b7280 !important; }
+td > .text-muted[style*="max-width"]{
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* Action buttons (Start/Close) */
+.btn-group.btn-group-sm .btn{
+  border-radius:10px;
+  font-weight:700;
+  padding:.4rem .6rem;
+}
+.btn-outline-primary{
+  color:#0f81c7;
+  border-color:#0f81c7;
+}
+.btn-outline-primary:hover{
+  background:#0f81c7; color:#fff;
+}
+.btn-outline-success{
+  color:#16a34a;
+  border-color:#16a34a;
+}
+.btn-outline-success:hover{
+  background:#16a34a; color:#fff;
+}
+
+/* Disabled state (when closed/started) — subtle, readable */
+.btn-group.btn-group-sm .btn:disabled{
+  opacity:.55; cursor: not-allowed;
+}
+
+/* Small screens */
+@@media (max-width: 576px){
+  h2.mb-2 + .mb-3 .d-flex{ gap:10px; }
+  .table thead th{ font-size:.92rem; }
+}
+    </style>
+
+    <script>
+function getCsrfToken(){
+  var f = document.querySelector('input[name="__RequestVerificationToken"]');
+  return f ? f.value : '';
+}
+
+async function setStatus(id, status, btn){
+  if(!id || !status) return;
+  const original = btn ? btn.innerHTML : null;
+  if(btn){ btn.disabled = true; btn.innerHTML = '...'; }
+
+  try{
+    const res = await fetch('@Url.Action("UpdateStatus","Repairmen")', {
+      method: 'POST',
+      credentials: 'same-origin',
+      headers: {
+        'Content-Type':'application/x-www-form-urlencoded; charset=UTF-8',
+        'X-Requested-With': 'XMLHttpRequest'
+      },
+      body: '__RequestVerificationToken=' + encodeURIComponent(getCsrfToken()) +
+            '&id=' + encodeURIComponent(id) +
+            '&status=' + encodeURIComponent(status)
+    });
+
+    const ct = (res.headers.get('content-type') || '').toLowerCase();
+    if (ct.includes('application/json')) {
+      const j = await res.json();
+      if(!j.ok){ alert(j.message || 'Failed to update.'); return; }
+      location.reload();
+    } else {
+      const html = await res.text();
+      document.open(); document.write(html); document.close();
+    }
+  } catch(e){
+    alert('Error: ' + e.message);
+  } finally {
+    if(btn){ btn.disabled = false; btn.innerHTML = original; }
+  }
+}
+    </script>
+}

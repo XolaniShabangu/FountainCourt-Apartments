@@ -1,0 +1,171 @@
+﻿@using FountainCourtResidents.Models
+@model LoginViewModel
+@{
+    ViewBag.Title = "Sign in";
+    Layout = "~/Views/Shared/_Layout.cshtml"; // keep or remove if you want a bare page
+}
+
+<!-- Brand fonts -->
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600&family=DM+Sans:wght@400;500&display=swap" rel="stylesheet" />
+
+<div class="fc-login-wrap">
+    <div class="fc-login-card shadow-lg">
+        <div class="fc-brand text-center mb-3">
+            <div class="fc-logo-circle">FC</div>
+            <div class="fc-brand-text">
+                <div class="fc-app-name">Fountain&nbsp;Court</div>
+                <div class="fc-app-sub">Residents Portal</div>
+            </div>
+        </div>
+
+        @using (Html.BeginForm("Login", "Account", new { ReturnUrl = ViewBag.ReturnUrl }, FormMethod.Post, new { role = "form", @class = "fc-form" }))
+        {
+            @Html.AntiForgeryToken()
+
+            @Html.ValidationSummary(true, "", new { @class = "text-danger mb-2 small" })
+
+            <div class="form-group">
+                <label class="fc-label" for="Email">Email</label>
+                @Html.TextBoxFor(m => m.Email, new { @class = "form-control fc-input", @placeholder = "you@example.com", @autocomplete = "username", @id = "Email" })
+                @Html.ValidationMessageFor(m => m.Email, "", new { @class = "text-danger small" })
+            </div>
+
+            <div class="form-group">
+                <label class="fc-label d-flex justify-content-between align-items-center" for="Password">
+                    <span>Password</span>
+                    @* Uncomment when ready *@
+                    @* <a class="fc-link small" href="@Url.Action("ForgotPassword","Account")">Forgot?</a> *@
+                </label>
+                @Html.PasswordFor(m => m.Password, new { @class = "form-control fc-input", @placeholder = "••••••••", @autocomplete = "current-password", @id = "Password" })
+                @Html.ValidationMessageFor(m => m.Password, "", new { @class = "text-danger small" })
+            </div>
+
+            <div class="d-flex align-items-center justify-content-between mb-3">
+                <label class="mb-0 small d-flex align-items-center">
+                    @Html.CheckBoxFor(m => m.RememberMe, new { @class = "mr-2" })
+                    <span>Remember me</span>
+                </label>
+                @* Optional secondary link *@
+                @* <a class="fc-link small" href="@Url.Action("Register","Account")">Create account</a> *@
+            </div>
+
+            <button type="submit" class="btn btn-dark btn-block fc-btn">
+                Sign in
+            </button>
+
+            @* Social / external providers (kept as-is) *@
+            @*<div class="mt-3">
+                @Html.Partial("_ExternalLoginsListPartial", new ExternalLoginListViewModel { ReturnUrl = ViewBag.ReturnUrl })
+            </div>*@
+        }
+        <div class="fc-footer-note text-center mt-3">
+            <small class="text-muted">Secure access for tenants & landlords</small>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    @Scripts.Render("~/bundles/jqueryval")
+}
+
+<style>
+    /* Page wrapper */
+    .fc-login-wrap {
+        min-height: calc(100vh - 56px); /* leave room for navbar if present */
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 40px 16px;
+        background: radial-gradient(1200px 600px at 15% 10%, #e9f5ff 0%, transparent 50%), radial-gradient(1000px 500px at 90% 90%, #f3f9f0 0%, transparent 45%), #f7fafc;
+        font-family: 'DM Sans', system-ui, -apple-system, Segoe UI, Roboto, 'Helvetica Neue', Arial, 'Noto Sans', 'Apple Color Emoji','Segoe UI Emoji','Segoe UI Symbol', sans-serif;
+    }
+
+    /* Card */
+    .fc-login-card {
+        width: 100%;
+        max-width: 440px;
+        background: #fff;
+        border-radius: 16px;
+        padding: 28px 24px;
+        border: 1px solid #eef2f7;
+    }
+
+    /* Brand */
+    .fc-brand {
+        font-family: 'Poppins', sans-serif;
+    }
+
+    .fc-logo-circle {
+        width: 56px;
+        height: 56px;
+        margin: 0 auto 8px auto;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background: linear-gradient(135deg,#0d6efd 0%, #17a2b8 100%);
+        color: #fff;
+        font-weight: 600;
+        letter-spacing: .5px;
+    }
+
+    .fc-brand-text .fc-app-name {
+        font-size: 22px;
+        font-weight: 600;
+        letter-spacing: .2px;
+        color: #1f2937;
+        line-height: 1.2;
+    }
+
+    .fc-brand-text .fc-app-sub {
+        font-size: 13px;
+        color: #6b7280;
+    }
+
+    /* Labels & inputs */
+    .fc-label {
+        font-weight: 500;
+        margin-bottom: 6px;
+        color: #374151;
+        font-size: 14px;
+    }
+
+    .fc-input {
+        height: 44px;
+        border-radius: 10px;
+        border: 1px solid #e5e7eb;
+        background: #fff;
+        transition: border-color .15s, box-shadow .15s;
+    }
+
+        .fc-input:focus {
+            outline: none !important;
+            border-color: #0d6efd;
+            box-shadow: 0 0 0 3px rgba(13,110,253,.15);
+        }
+
+    .fc-link {
+        color: #0d6efd;
+        text-decoration: none;
+    }
+
+        .fc-link:hover {
+            text-decoration: underline;
+        }
+
+    .fc-btn {
+        height: 46px;
+        border-radius: 10px;
+        font-weight: 600;
+        letter-spacing: .2px;
+    }
+
+    .fc-footer-note small {
+        font-size: 12px;
+    }
+
+    /* Tidy up bootstrap checkbox alignment if needed */
+    input[type="checkbox"] {
+        margin-right: 6px;
+    }
+</style>

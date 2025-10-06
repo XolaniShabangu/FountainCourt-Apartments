@@ -1,0 +1,169 @@
+﻿@model IEnumerable<FountainCourtResidents.Models.SiteNotice>
+@{
+    ViewBag.Title = "Notices";
+    Layout = "~/Views/Shared/_Layout.cshtml";
+}
+
+<h2 class="mb-3">Global Notices</h2>
+
+@if (TempData["ok"] != null)
+{
+    <div class="alert alert-success">@TempData["ok"]</div>
+}
+@if (TempData["err"] != null)
+{
+    <div class="alert alert-danger">@TempData["err"]</div>
+}
+
+<div class="card shadow-sm mb-3">
+    <div class="card-body">
+        <h5 class="card-title">Post a notice (max 2 live)</h5>
+        @using (Html.BeginForm("CreateNotice", "Landlord", FormMethod.Post))
+        {
+            @Html.AntiForgeryToken()
+            <div class="form-row">
+                <div class="form-group col-md-4">
+                    <label>Title (optional)</label>
+                    <input type="text" name="title" class="form-control" maxlength="120" />
+                </div>
+                <div class="form-group col-md-4">
+                    <label>Expires (optional)</label>
+                    <input type="datetime-local" name="expiresUtc" class="form-control" />
+                    <small class="text-muted">If set, the notice hides after this time.</small>
+                </div>
+                <div class="form-group col-md-12">
+                    <label>Message</label>
+                    <textarea name="body" class="form-control" rows="3" maxlength="2000" required></textarea>
+                </div>
+            </div>
+            <button type="submit" class="btn btn-primary">Post</button>
+        }
+    </div>
+</div>
+
+<div class="card shadow-sm">
+    <div class="card-body">
+        <h5 class="card-title mb-2">Current & recent notices</h5>
+
+        @if (Model == null || !Model.Any())
+        {
+            <div class="text-muted">No notices yet.</div>
+        }
+        else
+        {
+            <ul class="list-group">
+                @foreach (var n in Model)
+                {
+                    var isExpired = n.ExpiresUtc.HasValue && n.ExpiresUtc.Value <= DateTime.UtcNow;
+                    <li class="list-group-item d-flex justify-content-between align-items-center">
+                        <div>
+                            <div class="font-weight-bold">
+                                @(string.IsNullOrWhiteSpace(n.Title) ? "Notice" : n.Title)
+                                @if (isExpired)
+                                {
+                                    <span class="badge badge-secondary ml-2">Expired</span>
+                                }
+                            </div>
+                            <div class="text-muted small">
+                                @n.CreatedUtc.ToLocalTime().ToString("yyyy-MM-dd HH:mm")
+                                @if (n.ExpiresUtc.HasValue)
+                                {
+                                    @: · Expires @n.ExpiresUtc.Value.ToLocalTime().ToString("yyyy-MM-dd HH:mm")
+                                }
+                            </div>
+                            <div>@n.Body</div>
+                        </div>
+
+                        @using (Html.BeginForm("DeleteNotice", "Landlord", FormMethod.Post, new { @class = "ml-3" }))
+                        {
+                            @Html.AntiForgeryToken()
+                            @Html.Hidden("id", n.Id)
+                            <button class="btn btn-sm btn-outline-danger" type="submit">Delete</button>
+                        }
+                    </li>
+                }
+            </ul>
+        }
+    </div>
+</div>
+
+<style>
+/* ===============================
+   Notices – non-destructive polish
+   (scoped to elements in this view)
+   =============================== */
+
+/* Cards */
+.card {
+  border: 1px solid #eef2f7;
+  border-radius: 14px;
+}
+.card.shadow-sm:hover{
+  box-shadow: 0 16px 36px rgba(31,42,55,.08);
+  transform: translateY(-1px);
+  transition: transform .12s ease, box-shadow .12s ease;
+}
+.card-title{
+  font-weight: 700;
+  color: #1f2a37;
+}
+
+/* Form controls */
+.form-group label{
+  font-weight: 600;
+  color: #1f2a37;
+  margin-bottom: 6px;
+}
+.form-control{
+  border: 1px solid #e5e7eb;
+  border-radius: 10px;
+  padding: 10px 12px;
+  transition: box-shadow .15s ease, border-color .15s ease;
+}
+.form-control:focus{
+  border-color: #0f81c7;
+  box-shadow: 0 0 0 3px rgba(15,129,199,.15);
+  outline: none;
+}
+.text-muted{ color:#6b7280 !important; }
+
+/* Primary button */
+.btn.btn-primary{
+  background: linear-gradient(180deg, #0f81c7 0%, #0a6fab 100%);
+  border: 1px solid #0a6fab;
+  border-radius: 10px;
+  font-weight: 700;
+  padding: 10px 16px;
+}
+
+/* List group items */
+.list-group-item{
+  border: 1px solid #eef2f7;
+  border-left: 4px solid transparent;
+  transition: background-color .12s ease, border-color .12s ease;
+}
+.list-group-item:hover{
+  background: #fafcff;
+  border-left-color: #0f81c7;
+}
+.font-weight-bold{ color:#111827; }
+
+/* Badges */
+.badge{ border-radius: 999px; padding: .35em .6em; font-weight: 700; }
+.badge-secondary{ background-color:#94a3b8; color:#fff; }
+
+/* Delete button */
+.btn.btn-sm.btn-outline-danger{
+  border-radius: 10px;
+  font-weight: 700;
+  padding: .35rem .6rem;
+}
+
+/* Spacing tweaks */
+h2.mb-3 + .alert{ margin-top: .25rem; }
+
+/* Mobile niceties */
+@@media (max-width: 576px){
+  .form-row .form-group.col-md-4, .form-row .form-group.col-md-12 { margin-bottom: .75rem; }
+}
+</style>

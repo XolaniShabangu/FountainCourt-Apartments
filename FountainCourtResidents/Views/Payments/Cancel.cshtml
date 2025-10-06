@@ -1,0 +1,9 @@
+﻿@{
+    ViewBag.Title = "Payment Cancelled";
+    Layout = "~/Views/Shared/_Layout.cshtml";
+}
+<div class="container py-5 text-center">
+    <h2>Payment cancelled</h2>
+    <p>You cancelled the payment. If this was a mistake, you can try again from your lease link.</p>
+    @Html.ActionLink("Back to Home", "Index", "Home", null, new { @class = "btn btn-secondary mt-3" })
+</div>

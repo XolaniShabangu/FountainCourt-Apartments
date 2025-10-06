@@ -1,0 +1,354 @@
+﻿@model FountainCourtResidents.Models.ViewModels.LandlordDashboardVM
+@using System.Web.Helpers
+@{
+    ViewBag.Title = "Landlord Dashboard";
+    Layout = "~/Views/Shared/_Layout.cshtml";
+}
+
+<h2 class="mb-3">Landlord Dashboard</h2>
+
+<!-- Top action bar -->
+<div class="btn-toolbar mb-4" role="toolbar" aria-label="Toolbar with button groups">
+    <div class="btn-group mr-2" role="group" aria-label="Management">
+        @Html.ActionLink("Manage Room Types", "Index", "Landlord", null, new { @class = "btn btn-outline-secondary" })
+        @Html.ActionLink("Manage Tenants", "Tenants", "Landlord", null, new { @class = "btn btn-outline-secondary" })
+        @* Wire these when ready *@
+        @Html.ActionLink("Maintenance", "Index", "Maintenance", null, new { @class = "btn btn-outline-secondary" })
+        @Html.ActionLink("Repairmen", "Index", "Repairmen", null, new { @class = "btn btn-outline-secondary" })
+        @Html.ActionLink("Applications", "Applications", "Landlord", null, new { @class = "btn btn-outline-secondary" })
+        @Html.ActionLink("Notices", "Notices", "Landlord", null, new { @class = "btn btn-outline-secondary" })
+
+    </div>
+</div>
+
+<!-- Summary cards -->
+<div class="row mb-4">
+    <div class="col-md-4">
+        <div class="card shadow-sm">
+            <div class="card-body">
+                <div class="h5 mb-1">Total Units</div>
+                <div class="display-4">@Model.TotalUnits</div>
+                <small class="text-muted">Across all active room types</small>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-4 mt-3 mt-md-0">
+        <div class="card shadow-sm">
+            <div class="card-body">
+                <div class="h5 mb-1">Available</div>
+                <div class="display-4 text-success">@Model.TotalAvailable</div>
+                <small class="text-muted">Ready to let</small>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-4 mt-3 mt-md-0">
+        <div class="card shadow-sm">
+            <div class="card-body">
+                <div class="h5 mb-1">Occupied</div>
+                <div class="display-4 text-danger">@Model.TotalOccupied</div>
+                <small class="text-muted">Estimated (Total - Available)</small>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Charts -->
+<div class="row">
+    <div class="col-lg-5">
+        <div class="card shadow-sm mb-4">
+            <div class="card-body">
+                <div class="h5">Overall Availability</div>
+                <canvas id="overallChart" height="260"></canvas>
+            </div>
+        </div>
+    </div>
+    <div class="col-lg-7">
+        <div class="card shadow-sm mb-4">
+            <div class="card-body">
+                <div class="h5">Availability by Room Type</div>
+                <canvas id="byTypeChart" height="260"></canvas>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Future sections (placeholders) -->
+<div class="card shadow-sm mb-3 maint-card">
+    <div class="card-body py-2 px-3">
+        <div class="h6 mb-2">Maintenance Overview</div>
+
+        <div class="d-flex flex-wrap mb-2 small">
+            <div class="mr-3 mb-1"><span class="badge bg-danger text-white">Open</span> <strong>@Model.Maintenance.Open</strong></div>
+            <div class="mr-3 mb-1"><span class="badge bg-warning text-dark">In&nbsp;Progress</span> <strong>@Model.Maintenance.InProgress</strong></div>
+            <div class="mb-1"><span class="badge bg-success text-white">Closed</span> <strong>@Model.Maintenance.Closed</strong></div>
+        </div>
+
+        <canvas id="maintChart" height="140"></canvas>
+        <div class="mt-1 text-muted" style="font-size:.8rem;">
+            Opened = tickets created in month; Closed = tickets closed in month.
+        </div>
+    </div>
+</div>
+
+
+<div class="card shadow-sm mb-5">
+    <div class="card-body">
+        <div class="h5 mb-3">Repairmen Performance</div>
+
+        @if (Model.Repairmen == null || Model.Repairmen.Count == 0)
+        {
+            <p class="text-muted mb-0">No repairmen registered yet.</p>
+        }
+        else
+        {
+            <ul class="list-group">
+                @foreach (var r in Model.Repairmen)
+                {
+                    <li class="list-group-item d-flex justify-content-between align-items-center">
+                        <div>
+                            <strong>@r.FullName</strong>
+                            @if (!r.IsActive)
+                            {
+                                <span class="badge badge-secondary ml-2">Inactive</span>
+                            }
+                        </div>
+                        <div>
+                            @if (r.Rating.HasValue)
+                            {
+                                for (var i = 1; i <= 5; i++)
+                                {
+                                    if (r.Rating.Value >= i)
+                                    {
+                                        <span class="text-warning">&#9733;</span> <!-- full star -->
+                                    }
+                                    else if (r.Rating.Value >= i - 0.5)
+                                    {
+                                        <span class="text-warning">&#9734;</span> <!-- half star (simplified as empty) -->
+                                    }
+                                    else
+                                    {
+                                        <span class="text-muted">&#9734;</span> <!-- empty star -->
+                                    }
+                                }
+                                <small class="ml-1">(@r.Rating.Value.ToString("0.0"))</small>
+                            }
+                            else
+                            {
+                                <span class="text-muted">No rating</span>
+                            }
+                        </div>
+                    </li>
+                }
+            </ul>
+        }
+    </div>
+</div>
+
+<style>
+    .maint-card .badge {
+        font-size: .75rem;
+    }
+
+    .maint-card .h6 {
+        margin: 0;
+    }
+</style>
+
+
+
+@section scripts {
+    <!-- Chart.js (CDN). If you prefer local, add it to your Scripts bundle instead -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+
+    <script>
+        (function () {
+            var overall = {
+                available: @Model.TotalAvailable,
+                occupied: @Model.TotalOccupied
+            };
+
+            var typeLabels = @Html.Raw(Json.Encode(Model.Types.Select(t => t.Name)));
+            var typeTotals = @Html.Raw(Json.Encode(Model.Types.Select(t => t.Total)));
+            var typeAvail  = @Html.Raw(Json.Encode(Model.Types.Select(t => t.Available)));
+            var typeOcc    = @Html.Raw(Json.Encode(Model.Types.Select(t => t.Occupied)));
+
+            // Overall donut
+            var ctxOverall = document.getElementById('overallChart').getContext('2d');
+            new Chart(ctxOverall, {
+                type: 'doughnut',
+                data: {
+                    labels: ['Available', 'Occupied'],
+                    datasets: [{
+                        data: [overall.available, overall.occupied]
+                        // no explicit colors; Chart.js default palette
+                    }]
+                },
+                options: {
+                    plugins: {
+                        legend: { position: 'bottom' },
+                        tooltip: { enabled: true }
+                    },
+                    cutout: '60%'
+                }
+            });
+
+            // By type: stacked bars (Available vs Occupied)
+            var ctxByType = document.getElementById('byTypeChart').getContext('2d');
+            new Chart(ctxByType, {
+                type: 'bar',
+                data: {
+                    labels: typeLabels,
+                    datasets: [
+                        { label: 'Available', data: typeAvail },
+                        { label: 'Occupied',  data: typeOcc }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    scales: {
+                        x: { stacked: true },
+                        y: { stacked: true, beginAtZero: true, ticks: { precision: 0 } }
+                    },
+                    plugins: {
+                        legend: { position: 'bottom' },
+                        tooltip: { enabled: true }
+                    }
+                }
+            });
+
+            // Maintenance series
+        // Series: Opened (created per month), Closed (closed per month)
+  const mLabels = @Html.Raw(Json.Encode(Model.Maintenance.Series.Select(s => s.Label)));
+  const mOpened = @Html.Raw(Json.Encode(Model.Maintenance.Series.Select(s => s.Opened)));
+  const mClosed = @Html.Raw(Json.Encode(Model.Maintenance.Series.Select(s => s.Resolved)));
+
+  const ctx = document.getElementById('maintChart').getContext('2d');
+  new Chart(ctx, {
+    type: 'line',
+    data: {
+      labels: mLabels,
+      datasets: [
+        { label: 'Opened', data: mOpened, tension: 0.25 },
+        { label: 'Closed', data: mClosed, tension: 0.25 }
+      ]
+    },
+    options: {
+      responsive: true,
+      plugins: {
+        legend: {
+          position: 'bottom',
+          labels: { font: { size: 10 } }
+        },
+        tooltip: { enabled: true }
+      },
+      elements: {
+        point: { radius: 2 },
+        line: { borderWidth: 2 }
+      },
+      scales: {
+        x: { ticks: { font: { size: 10 } } },
+        y: { beginAtZero: true, ticks: { precision: 0, font: { size: 10 } } }
+      },
+      layout: { padding: { top: 0, right: 4, bottom: 0, left: 4 } }
+    }
+  });
+        })();
+    </script>
+}
+
+
+<style>
+    .btn-toolbar .btn {
+        margin-right: .5rem;
+    }
+
+    .card {
+        border-radius: .75rem;
+    }
+
+    .display-4 {
+        font-size: 2.5rem;
+        font-weight: 600;
+    }
+
+    @@media (max-width: 576px) {
+        .display-4 {
+            font-size: 2rem;
+        }
+    }
+
+
+/*    new style*/
+    <style>
+/* ===== Admin dashboard – visual polish (non-destructive) ===== */
+
+/* Top toolbar: make outline buttons feel premium */
+.btn-toolbar .btn {
+  margin-right: .5rem;
+  border-radius: 999px;
+  padding: 8px 14px;
+  font-weight: 600;
+}
+.btn-outline-secondary {
+  color: #0a6fab;
+  border-color: rgba(15,129,199,.25);
+  background: rgba(15,129,199,.06);
+}
+.btn-outline-secondary:hover,
+.btn-outline-secondary:focus {
+  color: #0a6fab;
+  border-color: rgba(15,129,199,.35);
+  background: rgba(15,129,199,.12);
+}
+
+/* Cards + counters */
+.card {
+  border-radius: 14px;
+  border: 1px solid #eef2f7;
+}
+.card.shadow-sm:hover {
+  box-shadow: 0 16px 36px rgba(31,42,55,.08);
+  transform: translateY(-1px);
+  transition: transform .12s ease, box-shadow .12s ease;
+}
+.display-4 {
+  font-size: 2.4rem;
+  font-weight: 700;
+  letter-spacing: .2px;
+}
+
+/* Summary cards labels */
+.card .h5 { font-weight: 700; color: #1f2a37; }
+
+/* Maintenance block */
+.maint-card .badge { font-size: .75rem; border-radius: 999px; padding: .35rem .6rem; }
+.maint-card .h6 { margin: 0; }
+.badge.bg-danger { background-color: #dc2626 !important; }
+.badge.bg-warning { background-color: #f59e0b !important; }
+.badge.bg-success { background-color: #16a34a !important; }
+
+/* List items – repairmen */
+.list-group-item {
+  border: 1px solid #eef2f7;
+  border-left: 4px solid transparent;
+  transition: border-color .12s ease, background-color .12s ease;
+}
+.list-group-item:hover {
+  background: #fafcff;
+  border-left-color: #0f81c7;
+}
+.list-group-item strong { color: #111827; }
+.text-warning { color: #f59e0b !important; }
+
+/* Chart cards spacing */
+#overallChart, #byTypeChart, #maintChart { display: block; }
+
+/* Responsive tweaks */
+@@media (max-width: 576px) {
+  .display-4 { font-size: 2rem; }
+  .btn-toolbar .btn { margin-bottom: .5rem; }
+}
+</style>
+
+</style>
+

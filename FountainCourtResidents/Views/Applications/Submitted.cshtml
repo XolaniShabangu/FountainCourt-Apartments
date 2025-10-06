@@ -1,0 +1,52 @@
+﻿@model int
+@{
+    ViewBag.Title = "Application Submitted";
+    Layout = "~/Views/Shared/_Layout.cshtml";
+    var redirectUrl = (string)ViewBag.RedirectUrl ?? Url.Action("Index", "Home");
+    var delayMs = ViewBag.DelayMs ?? 3000;
+}
+
+<div class="container py-5 text-center">
+    <h2 class="mb-3">Thank you! 🎉</h2>
+    <p>Your application (#@Model) was submitted successfully.</p>
+    <p class="text-muted">You’ll be redirected to the home page in 3 seconds…</p>
+
+    <div class="mt-4">
+        @* Optional progress bar if you use Bootstrap *@
+        <div class="progress" style="height:8px; max-width:420px; margin:auto;">
+            <div id="redirBar" class="progress-bar" role="progressbar" style="width:0%"></div>
+        </div>
+
+        <div class="mt-3">
+            <a class="btn btn-outline-primary" href="@redirectUrl">Go now</a>
+        </div>
+    </div>
+</div>
+
+<noscript>
+    <meta http-equiv="refresh" content="3;url=@redirectUrl" />
+</noscript>
+
+@section scripts{
+    <script>
+(function(){
+    var url = '@redirectUrl';
+    var total = @delayMs;
+    var step = 50;
+    var elapsed = 0;
+    var bar = document.getElementById('redirBar');
+
+    var t = setInterval(function(){
+        elapsed += step;
+        if (bar) {
+            var pct = Math.min(100, Math.round((elapsed/total)*100));
+            bar.style.width = pct + '%';
+        }
+        if (elapsed >= total) {
+            clearInterval(t);
+            window.location.href = url;
+        }
+    }, step);
+})();
+    </script>
+}

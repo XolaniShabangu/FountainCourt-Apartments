@@ -1,0 +1,382 @@
+﻿@model FountainCourtResidents.Models.ViewModels.LandlordTenantsVM
+@{
+    ViewBag.Title = "Manage Tenants";
+}
+
+<h2 class="mb-3">Manage Tenants</h2>
+
+@if (TempData["SuccessMessage"] != null)
+{
+    <div class="alert alert-success alert-dismissible fade show" role="alert">
+        @TempData["SuccessMessage"]
+        <button type="button" class="close" data-dismiss="alert" aria-label="Close">
+            <span aria-hidden="true">&times;</span>
+        </button>
+    </div>
+}
+
+
+<div class="d-flex align-items-center mb-3">
+    <input id="searchBox" class="form-control" style="max-width:320px" type="search"
+           placeholder="Search by tenant name…" value="@Model.Search" />
+    <button class="btn btn-outline-secondary ml-2" type="button" onclick="clearSearch()">Clear</button>
+</div>
+
+<div class="mb-3 text-muted">
+    <strong>Room Info:</strong>
+    &nbsp; <strong>Occupied:</strong> @Model.TotalOccupied
+    &nbsp;•&nbsp; <strong>Vacant:</strong> @(Model.TotalRooms - Model.TotalOccupied)
+</div>
+
+@if (Model.Groups == null || !Model.Groups.Any())
+{
+    <div class="alert alert-info">No rooms to display.</div>
+}
+else
+{
+    foreach (var g in Model.Groups)
+    {
+        <div class="mb-4 tenant-group">
+            <h4 class="mb-2">
+                <strong>@g.RoomTypeName</strong>
+                <span class="text-muted" style="font-size:.95rem;">
+                    (@g.OccupiedCount / @g.TotalUnits occupied)
+                </span>
+            </h4>
+
+            <div class="list-group">
+                @foreach (var r in g.Rooms)
+                {
+                    var nameForFilter = (r.TenantName ?? "").ToLowerInvariant();
+                    var collapseId = $"collapse_{r.RoomId}";
+                    <div class="list-group-item tenant-row" data-tenant="@nameForFilter">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <div style="min-width:180px;">
+                                <div><strong>@r.RoomNumber</strong></div>
+                                <div class="text-muted" style="font-size:.9rem;">Room ID: @r.RoomId</div>
+                            </div>
+
+                            <div class="flex-grow-1">
+                                @if (r.IsOccupied && !string.IsNullOrWhiteSpace(r.TenantName))
+                                {
+                                    <div>
+                                        <a href="javascript:void(0);" class="tenant-name-toggle d-flex align-items-center" data-target="@collapseId">
+                                            @r.TenantName
+                                            <span class="ml-2 arrow">  &#9660;</span> @* Downward arrow Unicode *@
+                                        </a>
+                                    </div>
+                                    <div class="text-muted" style="font-size:.9rem;">
+                                        @if (!string.IsNullOrWhiteSpace(r.Email))
+                                        {<text>@r.Email</text>}
+                                        @if (!string.IsNullOrWhiteSpace(r.Email) && !string.IsNullOrWhiteSpace(r.Phone))
+                                        {<text> &nbsp;•&nbsp; </text>}
+                                        @if (!string.IsNullOrWhiteSpace(r.Phone))
+                                        {<text>@r.Phone</text>}
+                                    </div>
+                                }
+                                else
+                                {
+                                    <span class="badge badge-secondary">Vacant</span>
+                                }
+                            </div>
+
+
+                            <div class="text-right">
+                                @if (r.IsOccupied && r.ApplicationId.HasValue)
+                                {
+                                    <div>
+                                        @Html.ActionLink("View application", "Applications", "Landlord",
+                                            new { id = r.ApplicationId },
+                                            new { @class = "btn btn-link btn-sm p-0" })
+                                    </div>
+                                    <div>
+                                        <button type="button"
+                                                class="btn btn-sm btn-outline-danger mt-1 remove-tenant-btn"
+                                                data-appid="@r.ApplicationId"
+                                                data-roomid="@r.RoomId"
+                                                data-tenant="@r.TenantName">
+                                            Remove Tenant
+                                        </button>
+                                    </div>
+                                }
+                            </div>
+
+                        </div>
+
+                        <!-- Collapsible payment history -->
+                        <div class="payment-history collapse" id="@collapseId" style="margin-top:10px;">
+                            @if (r.Payments != null && r.Payments.Any())
+                            {
+                                <table class="table table-sm table-bordered mb-0">
+                                    <thead>
+                                        <tr>
+                                            <th>Date</th>
+                                            <th>Amount</th>
+                                            <th>Status</th>
+                                            <th>Reference</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        @foreach (var p in r.Payments)
+                                        {
+                                            <tr>
+                                                <td>@p.CreatedUtc.ToString("yyyy-MM-dd")</td>
+                                                <td>@p.Amount.ToString("C")</td>
+                                                <td>@p.Status</td>
+                                                <td>@p.Reference</td>
+                                            </tr>
+                                        }
+                                    </tbody>
+                                </table>
+                            }
+                            else
+                            {
+                                <div class="text-muted">No payments available.</div>
+                            }
+                        </div>
+                    </div>
+                }
+            </div>
+        </div>
+    }
+}
+
+@section scripts {
+    <script>
+        (function () {
+            var box = document.getElementById('searchBox');
+
+            function filter() {
+                var q = (box.value || '').trim().toLowerCase();
+                var rows = document.querySelectorAll('.tenant-row');
+                rows.forEach(function (row) {
+                    var name = row.getAttribute('data-tenant') || '';
+                    row.style.display = (!q || name.indexOf(q) >= 0) ? '' : 'none';
+                });
+
+                document.querySelectorAll('.tenant-group').forEach(function (group) {
+                    var anyVisible = false;
+                    group.querySelectorAll('.tenant-row').forEach(function (r) {
+                        if (r.style.display !== 'none') anyVisible = true;
+                    });
+                    group.style.display = anyVisible ? '' : 'none';
+                });
+            }
+
+            box.addEventListener('input', filter);
+
+            window.clearSearch = function () {
+                box.value = '';
+                filter();
+                box.focus();
+            };
+
+            filter();
+
+            // Collapsible tenant payment history
+            document.querySelectorAll('.tenant-name-toggle').forEach(function (toggle) {
+                toggle.addEventListener('click', function () {
+                    var targetId = this.getAttribute('data-target');
+                    var el = document.getElementById(targetId);
+                    el.classList.toggle('show');
+                });
+            });
+
+            // Handle remove tenant button
+document.querySelectorAll('.remove-tenant-btn').forEach(function (btn) {
+    btn.addEventListener('click', function () {
+        var appId = this.getAttribute('data-appid');
+        var roomId = this.getAttribute('data-roomid');
+        var tenant = this.getAttribute('data-tenant');
+
+        if (confirm("Are you sure you want to remove tenant: " + tenant + "?")) {
+            // Redirect to controller action
+            window.location.href = '@Url.Action("DisableTenant", "Landlord")'
+                + '?applicationId=' + appId
+                + '&roomId=' + roomId;
+        }
+    });
+});
+
+
+
+        })();
+
+
+
+    </script>
+}
+
+<style>
+    .list-group-item {
+        border-left: 4px solid #f0f0f0;
+        cursor: default;
+    }
+
+        .list-group-item .badge {
+            font-size: .85rem;
+        }
+
+    .tenant-name-toggle {
+        cursor: pointer;
+        text-decoration: underline;
+        color: #007bff;
+    }
+
+        .tenant-name-toggle:hover {
+            text-decoration: none;
+        }
+
+    .payment-history {
+        display: none;
+    }
+
+        .payment-history.show {
+            display: block;
+        }
+
+    .tenant-name-toggle .arrow {
+        transition: transform 0.3s ease;
+    }
+
+    .payment-history.show + .tenant-name-toggle .arrow {
+        transform: rotate(180deg);
+    }
+
+/*    new style*/
+
+    <style>
+/* ============================
+   Manage Tenants – non-destructive polish
+   (NO logic/markup changes)
+   ============================ */
+
+/* Heading & info row */
+h2.mb-3 { margin-bottom: .75rem !important; }
+.mb-3.text-muted { color:#6b7280 !important; }
+
+/* Search row */
+#searchBox{
+  border: 1px solid #e5e7eb;
+  border-radius: 10px;
+  padding: 10px 12px;
+  transition: box-shadow .15s ease, border-color .15s ease;
+}
+#searchBox:focus{
+  border-color:#0f81c7;
+  box-shadow: 0 0 0 3px rgba(15,129,199,.15);
+  outline: none;
+}
+.btn.btn-outline-secondary{
+  border-radius: 999px;
+  border-color: rgba(15,129,199,.25);
+  color:#0a6fab;
+  background: rgba(15,129,199,.06);
+  font-weight:600;
+}
+.btn.btn-outline-secondary:hover{
+  border-color: rgba(15,129,199,.35);
+  background: rgba(15,129,199,.12);
+}
+
+/* Alert close button spacing (Bootstrap 4) */
+.alert .close{ line-height: 1.2; }
+
+/* Group header */
+.tenant-group h4{
+  font-weight: 700;
+  color:#1f2a37;
+}
+.tenant-group h4 .text-muted{ color:#6b7280 !important; }
+
+/* Rows list */
+.list-group { border-radius: 12px; overflow: hidden; }
+.list-group-item{
+  border: 1px solid #eef2f7;
+  border-left: 4px solid #f0f4f8;
+  transition: background-color .12s ease, border-color .12s ease, transform .08s ease;
+}
+.list-group-item:hover{
+  background:#fafcff;
+  border-left-color:#0f81c7;
+}
+
+/* Room id muted line */
+.list-group-item .text-muted{ color:#6b7280 !important; }
+
+/* Vacant badge to match brand */
+.badge.badge-secondary{
+  background-color:#94a3b8;
+  color:#fff;
+  border-radius:999px;
+  padding:.35em .6em;
+  font-weight:700;
+}
+
+/* Right-side action buttons (keep your classes) */
+.btn.btn-link.btn-sm{
+  color:#0f81c7;
+  font-weight:600;
+}
+.btn.btn-sm.btn-outline-danger{
+  border-radius:10px;
+  font-weight:700;
+  padding:.35rem .6rem;
+}
+
+/* Payment history subtable */
+.payment-history{
+  background:#fcfdfd;
+  border:1px dashed #eef2f7;
+  border-radius:10px;
+  padding:10px;
+}
+.payment-history .table{
+  background:#fff;
+  border:1px solid #eef2f7;
+  border-radius:8px;
+  overflow:hidden;
+  margin:0;
+}
+.payment-history .table thead th{
+  background:#f8fafc;
+  border-bottom:1px solid #eef2f7;
+  font-weight:700;
+  color:#1f2a37;
+}
+.payment-history .table td,
+.payment-history .table th{
+  vertical-align: middle;
+  font-variant-numeric: tabular-nums;
+}
+
+/* Tenant name toggle link */
+.tenant-name-toggle{
+  color:#0f81c7;
+  text-decoration: none;
+  font-weight:600;
+}
+.tenant-name-toggle:hover{ text-decoration: underline; }
+.tenant-name-toggle .arrow{
+  display:inline-block;
+  transition: transform .25s ease;
+  font-size: .9rem;
+  opacity:.85;
+}
+
+/* Rotate arrow when the row's payment-history is open (no JS change; uses :has) */
+.tenant-row:has(.payment-history.show) .tenant-name-toggle .arrow{
+  transform: rotate(180deg);
+}
+
+/* Compact numbers & columns */
+.table-sm td, .table-sm th{ padding: .45rem .6rem; }
+
+/* Small-screen niceties */
+@@media (max-width: 576px){
+  .list-group-item > .d-flex{ flex-direction: column; align-items: flex-start; gap: .4rem; }
+  .list-group-item .text-right{ text-align: left !important; }
+}
+</style>
+
+</style>

@@ -1,0 +1,22 @@
+﻿@{
+    ViewBag.Title = "Payment Successful";
+    Layout = "~/Views/Shared/_Layout.cshtml";
+    var za = new System.Globalization.CultureInfo("en-ZA");
+    var amount = (ViewBag.Amount is decimal) ? (decimal)ViewBag.Amount : 0m;
+}
+
+<div class="container py-5 text-center">
+    <h2>Thank you!</h2>
+    <p>Your payment of <strong>R @amount.ToString("N2", za)</strong> was successful.</p>
+
+    @if (ViewBag.ShowCredentialsNote == true)
+    {
+        <p>You’ll receive an email shortly with your <strong>login details</strong> for your tenant profile.</p>
+    }
+    else
+    {
+        <p>We’ll be in touch shortly with next steps.</p>
+    }
+
+    @Html.ActionLink("Go to Home", "Index", "Home", null, new { @class = "btn btn-primary mt-3" })
+</div>
